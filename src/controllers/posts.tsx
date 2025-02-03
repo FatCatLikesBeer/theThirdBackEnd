@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 
-function createUser(c: Context) {
+function createPost(c: Context) {
   const response = {
     success: true,
     path: `${c.req.path}`,
@@ -9,7 +9,7 @@ function createUser(c: Context) {
   return c.json(response);
 }
 
-function readUserDetail(c: Context) {
+function readPostDetail(c: Context) {
   const response = {
     success: true,
     path: `${c.req.path}`,
@@ -18,7 +18,7 @@ function readUserDetail(c: Context) {
   return c.json(response);
 };
 
-function readUserList(c: Context) {
+function readPostList(c: Context) {
   const response = {
     success: true,
     path: `${c.req.path}`,
@@ -27,26 +27,26 @@ function readUserList(c: Context) {
   return c.json(response);
 }
 
-function updateUser(c: Context) {
+function updatePost(c: Context) {
   const response = {
     success: true,
     path: `${c.req.path}`,
-    message: 'Update User not yet implemented',
+    message: 'Update Post not yet implemented',
   }
   return c.json(response);
 }
 
-function deleteUser(c: Context) {
+function deletePost(c: Context) {
   const response = {
     success: true,
     path: `${c.req.path}`,
-    message: 'Delete User not yet implemented',
+    message: 'Delete Post not yet implemented',
   }
   return c.json(response);
 }
 
-const userControllers = {
-  createUser, readUserList, readUserDetail, updateUser, deleteUser,
+const postControllers = {
+  createPost, readPostList, readPostDetail, updatePost, deletePost,
 }
 
-export default userControllers;
+export default postControllers;

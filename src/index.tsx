@@ -5,7 +5,7 @@ import type { Context } from 'hono';
 
 import StaticPost from './static/post.js';
 
-import users from './routes/users.js';
+import api from './routes/api.js';
 
 const app = new Hono();
 
@@ -13,8 +13,8 @@ const app = new Hono();
 const Test: FC = () => <h1>Welcome to The Third</h1>;
 app.get('/', (c: Context) => c.html(<Test />));
 
-// API
-app.route("/users", users);
+// API endpoints
+app.route("/api", api);
 
 // Server Renderd Content
 app.get('/static/post', async (c: Context) => {
