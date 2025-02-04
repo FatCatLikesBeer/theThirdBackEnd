@@ -9,12 +9,12 @@ import api from './routes/api.js';
 
 const app = new Hono();
 
-// Welcome page, will be repalced with the front end
+// SPA
 const Test: FC = () => <h1>Welcome to The Third</h1>;
 app.get('/', (c: Context) => c.html(<Test />));
 
 // API endpoints
-app.route("/api", api);
+app.route("/api/", api);
 
 // Server Renderd Content
 app.get('/static/post', async (c: Context) => {

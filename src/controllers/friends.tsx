@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 
-function createUser(c: Context) {
+function createFriend(c: Context) {
   const response = {
     success: true,
     path: `${c.req.path}`,
@@ -9,7 +9,7 @@ function createUser(c: Context) {
   return c.json(response);
 }
 
-function readUserDetail(c: Context) {
+function readFriendDetail(c: Context) {
   const response = {
     success: true,
     path: `${c.req.path}`,
@@ -18,7 +18,7 @@ function readUserDetail(c: Context) {
   return c.json(response);
 };
 
-function readUserList(c: Context) {
+function readFriendList(c: Context) {
   const response = {
     success: true,
     path: `${c.req.path}`,
@@ -27,24 +27,24 @@ function readUserList(c: Context) {
   return c.json(response);
 }
 
-function updateUser(c: Context) {
+function updateFriend(c: Context) {
   const response = {
     success: true,
     path: `${c.req.path}`,
-    message: 'Update User not yet implemented',
+    message: 'Update Friend not yet implemented',
   }
   return c.json(response);
 }
 
-function deleteUser(c: Context) {
+function deleteFriend(c: Context) {
   const response = {
     success: true,
     path: `${c.req.path}`,
-    message: 'Delete User not yet implemented',
+    message: 'Delete Friend not yet implemented',
   }
   return c.json(response);
 }
 
-const userControllers = { createUser, readUserList, readUserDetail, updateUser, deleteUser, }
+const friendControllers = { createFriend, readFriendList, readFriendDetail, updateFriend, deleteFriend, }
 
-export default userControllers;
+export default friendControllers;
