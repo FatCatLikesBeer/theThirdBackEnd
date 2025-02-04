@@ -13,8 +13,9 @@ if &shortmess =~ 'A'
 else
   set shortmess=aoO
 endif
-badd +17 ./index.tsx
-badd +7 ~/Developer/thethird/theThirdBackEnd/src/routes/api.ts
+badd +12 ~/Developer/thethird/theThirdBackEnd/src/routes/api.ts
+badd +29 ./controllers/users.tsx
+badd +16 ~/Developer/thethird/theThirdBackEnd/src/library/dev_turso.ts
 argglobal
 %argdel
 $argadd ./index.tsx
@@ -27,7 +28,7 @@ set winheight=1
 set winminwidth=0
 set winwidth=1
 argglobal
-balt ./index.tsx
+balt ./controllers/users.tsx
 setlocal fdm=expr
 setlocal fde=v:lua.require'lazyvim.util'.ui.foldexpr()
 setlocal fmr={{{,}}}
@@ -36,12 +37,12 @@ setlocal fdl=99
 setlocal fml=1
 setlocal fdn=20
 setlocal fen
-let s:l = 7 - ((6 * winheight(0) + 30) / 60)
+let s:l = 12 - ((11 * winheight(0) + 30) / 60)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 7
-normal! 07|
+keepjumps 12
+normal! 0
 tabnext 1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf

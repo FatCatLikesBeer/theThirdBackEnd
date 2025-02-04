@@ -14,7 +14,7 @@ const Test: FC = () => <h1>Welcome to The Third</h1>;
 app.get('/', (c: Context) => c.html(<Test />));
 
 // API endpoints
-app.route("/api/", api);
+app.route("/api", api);
 
 // Server Renderd Content
 app.get('/static/post', async (c: Context) => {
@@ -29,5 +29,7 @@ serve({
   port
 });
 
-// TODO: boiler plate all API endpoints
 // TODO: Connect DB
+// Create endpoint logic: users, friends, posts, comments, likes
+// Draft up basic frontend
+// Implemented JWT & TOTP

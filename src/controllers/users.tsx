@@ -1,5 +1,7 @@
 import type { Context } from "hono";
 
+import { turso } from "../library/dev_turso.js";
+
 function createUser(c: Context) {
   const response = {
     success: true,
@@ -9,7 +11,7 @@ function createUser(c: Context) {
   return c.json(response);
 }
 
-function readUserDetail(c: Context) {
+async function readUserDetail(c: Context) {
   const response = {
     success: true,
     path: `${c.req.path}`,
@@ -18,11 +20,13 @@ function readUserDetail(c: Context) {
   return c.json(response);
 };
 
-function readUserList(c: Context) {
+async function readUserList(c: Context) {
+  const users = await turso.execute('SELECT display_name FROM users');
   const response = {
     success: true,
     path: `${c.req.path}`,
     message: 'GET List not yet implemented',
+    users: users,
   }
   return c.json(response);
 }
