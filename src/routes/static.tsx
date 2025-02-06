@@ -6,8 +6,8 @@ const statics = new Hono();
 
 const { StaticUser, StaticPost, StaticComment } = { ...StaticControllers };
 
-statics.get('/users/:id', (c: Context) => { return c.html(<StaticUser user_id={c.req.param("id")} />) });
-statics.get('/posts/:id', (c: Context) => { return c.html(<StaticPost post_id={c.req.param("id")} />) });
-statics.get('/comments/:id', (c: Context) => { return c.html(<StaticComment comment_id={c.req.param("id")} />) });
+statics.get('/users/:id', (c: Context) => { return c.html(<StaticUser user_id={c.req.param("id")} route={c.req.url} />) });
+statics.get('/posts/:id', (c: Context) => { return c.html(<StaticPost post_id={c.req.param("id")} route={c.req.url} />) });
+statics.get('/comments/:id', (c: Context) => { return c.html(<StaticComment comment_id={c.req.param("id")} route={c.req.url} />) });
 
 export default statics;

@@ -5,7 +5,6 @@ import type { FC } from 'hono/jsx';
 import type { Context } from 'hono';
 
 import statics from './routes/static.js';
-import StaticPost from './static/post.js';
 
 import api from './routes/api.js';
 
@@ -21,9 +20,6 @@ app.route("/api", api);
 
 // Static Endpoints
 app.route("/static", statics);
-// app.get('/static/post', async (c: Context) => {
-//   return c.html(<StaticPost title={"Hello There"} body={"It's working!"} />);
-// });
 
 const port = 3000
 console.log(`Server is running on http://localhost:${port}`);
@@ -33,7 +29,7 @@ serve({
   port
 });
 
-// TODO: Create routes for static pages
+// TODO: Add to users schema: location, bio, external links,
 // TODO: Test DB by scaffolding static endpoints
 // TODO: Create endpoint logic: users, friends, posts, comments, likes
 // TODO: Draft up basic frontend

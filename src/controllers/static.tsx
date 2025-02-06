@@ -1,9 +1,12 @@
 import type { FC } from "hono/jsx";
 import { turso } from "../library/dev_turso.js";
 
-const bucketURL = "http://my-bucket.mooo.com:9000/the-third/";
+function getAvatar(avatar: any): string {
+  const bucketURL = "http://my-bucket.mooo.com:9000/the-third/";
+  return `${bucketURL}${avatar}.jpg`;
+}
 
-const StaticUser: FC = async ({ user_id }) => {
+const StaticUser: FC = async ({ user_id, route }) => {
   const userId: string = user_id;
 
   const queryContent = await turso.execute({
@@ -13,27 +16,43 @@ const StaticUser: FC = async ({ user_id }) => {
 
   const { email, display_name, avatar } = { ...queryContent.rows[0] };
 
-  const avatarURI = `${bucketURL}${avatar}.jpg`;
-
   return (
     <>
       {
         queryContent.rows.length != 0
           ?
           <>
-            <h1>Static User</h1>
-            <p>Email: {email}</p>
-            <p>UserName: {display_name}</p>
-            <img src={avatarURI} />
+            <head>
+              <meta property="og:title" content={`${queryContent.rows[0].display_name}'s Profile`} />
+              <meta property="og:image" content={`${getAvatar(queryContent.rows[0].avatar)}`} />
+              <meta property="og:url" content={`${route}`} />
+            </head>
+            <body>
+              <h1>Static User</h1>
+              <p>Email: {email}</p>
+              <p>UserName: {display_name}</p>
+              <img src={getAvatar(avatar)} />
+            </body>
           </>
           :
-          <h1>No User Found</h1>
+          <>
+            <head>
+              <title>Nothing's Here 😩</title>
+              <meta property="og:title" content="There is no user here" />
+              <meta property="og:image" content="http://my-bucket.mooo.com:9000/the-third/empty.jpg" />
+              <meta property="og:url" content={`${route}`} />
+            </head>
+            <body>
+              <h1>No User Found</h1>
+              <img src="http://my-bucket.mooo.com:9000/the-third/empty.jpg" />
+            </body>
+          </>
       }
     </>
   );
 }
 
-const StaticPost: FC = async ({ post_id }) => {
+const StaticPost: FC = async ({ post_id, route }) => {
   const postId: string = post_id;
 
   const queryPostContent = await turso.execute({
@@ -53,31 +72,9 @@ const StaticPost: FC = async ({ post_id }) => {
     `,
     args: [postId],
   });
-  // const queryComments = await turso.execute({
-  //   sql: `SELECT u.display_name, c.content, c.created_at
-  //     FROM users u
-  //     JOIN comments c ON c.user_id = u.id
-  //     JOIN posts p ON p.id = c.post_id
-  //     WHERE p.uuid = ?;
-  //   `,
-  //   args: [postId],
-  // });
-  // const queryCommentLikes = await turso.execute({
-  //   sql: `SELECT u.display_name, u.id
-  //     FROM users u
-  //     JOIN likes l ON l.user_id = u.id
-  //     JOIN comments c ON c.id = l.comment_id
-  //     WHERE c.post_id = ?;
-  //   `,
-  //   args: [postId],
-  // });
 
   console.log(queryPostContent);
   console.log(queryPostLikes);
-  // console.log(queryComments);
-  // console.log(queryCommentLikes);
-
-  const avatarURI = `${bucketURL}${queryPostContent.rows[0].avatar}.jpg`;
 
   return (
     <>
@@ -85,49 +82,128 @@ const StaticPost: FC = async ({ post_id }) => {
         queryPostContent.rows.length != 0
           ?
           <>
-            <h1>Static Post</h1>
-            <p>{postId}</p>
-            <p>User: {queryPostContent.rows[0].display_name}</p>
-            <img src={avatarURI} />
-            <p>Post: {queryPostContent.rows[0].content}</p>
-            <p>Likes: {queryPostLikes.rows.length}</p>
-            {queryPostLikes.rows.map((elem) => {
-              return (
-                <p>{elem.display_name}</p>
-              )
-            })}
+            <head>
+              <title>The Third</title>
+              <meta property="og:title" content={`${queryPostContent.rows[0].display_name}'s Post`} />
+              <meta property="og:image" content={`${getAvatar(queryPostContent.rows[0].avatar)}`} />
+              <meta property="og:url" content={`${route}`} />
+            </head>
+            <body>
+              <p>{postId}</p>
+              <p>User: {queryPostContent.rows[0].display_name}</p>
+              <img src={getAvatar(queryPostContent.rows[0].avatar)} />
+              <p>Post: {queryPostContent.rows[0].content}</p>
+              <p>Likes: {queryPostLikes.rows.length}</p>
+              {queryPostLikes.rows.map((elem) => {
+                return (
+                  <p>{elem.display_name}</p>
+                )
+              })}
+            </body>
           </>
           :
-          <h1>No Post Found</h1>
+          <>
+            <head>
+              <title>Nothing's Here 😩</title>
+              <meta property="og:title" content="There is no post here" />
+              <meta property="og:image" content="http://my-bucket.mooo.com:9000/the-third/empty.jpg" />
+              <meta property="og:url" content={`${route}`} />
+            </head>
+            <body>
+              <h1>No Post Found</h1>
+              <img src="http://my-bucket.mooo.com:9000/the-third/empty.jpg" />
+            </body>
+          </>
       }
     </>
   );
 }
 
-const StaticComment: FC = async ({ comment_id }) => {
+const StaticComment: FC = async ({ comment_id, route }) => {
   const commentId: string = comment_id;
 
-  const queryContent = await turso.execute({
+  const queryCommenter = await turso.execute({
+    sql: ` SELECT u.display_name, u.avatar
+      FROM users u
+      JOIN comments c ON c.user_id = u.id
+      WHERE c.uuid = ?;
+    `,
+    args: [commentId],
+  });
+  const queryCommentContent = await turso.execute({
     sql: "SELECT content, created_at FROM comments WHERE uuid = ?;",
     args: [commentId],
   });
-  const queryLikes = await turso.execute({
-    sql: "SELECT COUNT(*) as like_count FROM likes WHERE comment_id = ?",
+  const queryCommentLikes = await turso.execute({
+    sql: `SELECT u.display_name, u.avatar
+    FROM users u
+    JOIN likes l ON l.user_id = u.id
+    JOIN comments c ON l.comment_id = c.id
+    WHERE c.uuid = ?;
+    `,
     args: [commentId],
   });
+  const queryPostContent = await turso.execute({
+    sql: `SELECT p.content
+    FROM posts p
+    JOIN comments c ON c.post_id = p.id
+    WHERE c.uuid = ?;
+    `,
+    args: [commentId],
+  });
+  const queryPoster = await turso.execute({
+    sql: `SELECT u.display_name, u.avatar
+    FROM users u
+    JOIN posts p ON p.user_id = u.id
+    JOIN comments c ON p.id = c.post_id
+    WHERE c.uuid = ?;
+    `,
+    args: [commentId],
+  });
+
+  console.log(queryPoster);
 
   return (
     <>
       {
-        queryContent.rows.length != 0
+        queryCommentContent.rows.length != 0
           ?
           <>
-            <h1>Static Post</h1>
-            <p>Comment: {}</p>
-            <p>Liex</p>
+            <head>
+              <title>The Third: Comment</title>
+              <meta property="og:title" content={`${queryCommenter.rows[0].display_name}'s Comment`} />
+              <meta property="og:image" content={`${getAvatar(queryCommenter.rows[0].avatar)}`} />
+              <meta property="og:url" content={`${route}`} />
+            </head>
+            <body>
+              <div>
+                <h2>Comment</h2>
+                <p>User: {queryCommenter.rows[0].display_name}</p>
+                <img src={getAvatar(queryCommenter.rows[0].avatar)} />
+                <p>Post: {queryCommentContent.rows[0].content}</p>
+                <p>Likes: {queryCommentLikes.rows.length}</p>
+              </div>
+              <div>
+                <h2>Original Post</h2>
+                <p>User: {queryPoster.rows[0].display_name}</p>
+                <img src={getAvatar(queryPoster.rows[0].avatar)} />
+                <p>Post: {queryPostContent.rows[0].content}</p>
+              </div>
+            </body>
           </>
           :
-          <h1>No Post Found</h1>
+          <>
+            <head>
+              <title>Nothing's Here 😩</title>
+              <meta property="og:title" content="There is no comment here" />
+              <meta property="og:image" content="http://my-bucket.mooo.com:9000/the-third/empty.jpg" />
+              <meta property="og:url" content={`${route}`} />
+            </head>
+            <body>
+              <h1>No Comment Found</h1>
+              <img src="http://my-bucket.mooo.com:9000/the-third/empty.jpg" />
+            </body>
+          </>
       }
     </>
   );
