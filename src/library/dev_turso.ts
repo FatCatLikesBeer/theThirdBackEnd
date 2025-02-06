@@ -4,7 +4,6 @@ export const turso = createClient({
   url: 'http://127.0.0.1:8082',
 });
 
-
 // Create DB tables
 const transaction = await turso.transaction("write");
 try {
@@ -13,9 +12,14 @@ try {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       uuid INTEGER NOT NULL DEFAULT (lower(hex(randomblob(16)))),
       email TEXT NOT NULL CHECK(email <> '') UNIQUE,
-      display_name TEXT NOT NULL CHECK(display_name <> ''),
-      password TEXT NOT NULL CHECK(display_name <> ''),
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      handle TEXT NOT NULL CHECK(handle <> '') UNIQUE,
+      password TEXT NOT NULL CHECK(password <> ''),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      avatar TEXT DEFAULT NULL,
+      location TEXT DEFAULT NULL,
+      bio TEXT DEFAULT NULL,
+      about TEXT DEFAULT NULL,
+      display_name TEXT
     );
   `);
 

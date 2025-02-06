@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { turso } from "../library/dev_turso.js";
 
@@ -12,22 +13,58 @@ function createUser(c: Context) {
 }
 
 async function readUserDetail(c: Context) {
-  const response = {
-    success: true,
+  let status: ContentfulStatusCode = 400;
+  const uuid = c.req.param("id");
+  const queryUser = await turso.execute({
+    sql: "SELECT email, handle, display_name, avatar, bio, about, location, created_at FROM users WHERE uuid = ?",
+    args: [uuid],
+  });
+
+  let response: APIResponse = {
+    success: false,
     path: `${c.req.path}`,
-    message: 'GET Detail not yet implemented',
+    message: `Could not find user ${uuid}`,
   }
-  return c.json(response);
+
+  if (queryUser.rows.length != 0) {
+    response = {
+      success: true,
+      path: `${c.req.path}`,
+      message: `Details on user: ${uuid}`,
+      data: queryUser.rows[0],
+    }
+    status = 200;
+  }
+  return c.json({ response }, status);
 };
 
 async function readUserList(c: Context) {
-  const users = await turso.execute('SELECT display_name FROM users');
-  const response = {
-    success: true,
+  const query = c.req.query('q');
+
+  let response: APIResponse = {
+    success: false,
     path: `${c.req.path}`,
-    message: 'GET List not yet implemented',
-    users: users,
+    message: 'Could not retrieve list of users',
   }
+
+  if (query == undefined) {
+    const queryUsers = await turso.execute("SELECT handle, display_name, created_at, avatar FROM users");
+    response = {
+      success: true,
+      path: `${c.req.path}`,
+      message: "List of users",
+      data: [...queryUsers.rows],
+    }
+  } else {
+    const queryUsers = await turso.execute(`SELECT handle, display_name, created_at, avatar FROM users WHERE handle LIKE '%${query}%'`);
+    response = {
+      success: true,
+      path: `${c.req.path}`,
+      message: `List of users matching search '${query}'`,
+      data: [...queryUsers.rows],
+    }
+  }
+
   return c.json(response);
 }
 

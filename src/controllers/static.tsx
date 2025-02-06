@@ -10,11 +10,11 @@ const StaticUser: FC = async ({ user_id, route }) => {
   const userId: string = user_id;
 
   const queryContent = await turso.execute({
-    sql: "SELECT email, display_name, avatar FROM users WHERE uuid = ?;",
+    sql: "SELECT email, handle, avatar FROM users WHERE uuid = ?;",
     args: [userId],
   });
 
-  const { email, display_name, avatar } = { ...queryContent.rows[0] };
+  const { email, handle, avatar } = { ...queryContent.rows[0] };
 
   return (
     <>
@@ -23,14 +23,14 @@ const StaticUser: FC = async ({ user_id, route }) => {
           ?
           <>
             <head>
-              <meta property="og:title" content={`${queryContent.rows[0].display_name}'s Profile`} />
+              <meta property="og:title" content={`${queryContent.rows[0].handle}'s Profile`} />
               <meta property="og:image" content={`${getAvatar(queryContent.rows[0].avatar)}`} />
               <meta property="og:url" content={`${route}`} />
             </head>
             <body>
               <h1>Static User</h1>
               <p>Email: {email}</p>
-              <p>UserName: {display_name}</p>
+              <p>UserName: {handle}</p>
               <img src={getAvatar(avatar)} />
             </body>
           </>
@@ -56,7 +56,7 @@ const StaticPost: FC = async ({ post_id, route }) => {
   const postId: string = post_id;
 
   const queryPostContent = await turso.execute({
-    sql: `SELECT u.display_name, u.avatar, p.content, p.created_at
+    sql: `SELECT u.handle, u.avatar, p.content, p.created_at
       FROM posts p
       JOIN users u ON p.user_id = u.id
       WHERE p.uuid = ?;
@@ -64,7 +64,7 @@ const StaticPost: FC = async ({ post_id, route }) => {
     args: [postId],
   });
   const queryPostLikes = await turso.execute({
-    sql: `SELECT u.id, u.display_name
+    sql: `SELECT u.id, u.handle
     FROM likes l
     JOIN users u ON l.user_id = u.id
     JOIN posts p ON p.id = l.post_id
@@ -84,19 +84,19 @@ const StaticPost: FC = async ({ post_id, route }) => {
           <>
             <head>
               <title>The Third</title>
-              <meta property="og:title" content={`${queryPostContent.rows[0].display_name}'s Post`} />
+              <meta property="og:title" content={`${queryPostContent.rows[0].handle}'s Post`} />
               <meta property="og:image" content={`${getAvatar(queryPostContent.rows[0].avatar)}`} />
               <meta property="og:url" content={`${route}`} />
             </head>
             <body>
               <p>{postId}</p>
-              <p>User: {queryPostContent.rows[0].display_name}</p>
+              <p>User: {queryPostContent.rows[0].handle}</p>
               <img src={getAvatar(queryPostContent.rows[0].avatar)} />
               <p>Post: {queryPostContent.rows[0].content}</p>
               <p>Likes: {queryPostLikes.rows.length}</p>
               {queryPostLikes.rows.map((elem) => {
                 return (
-                  <p>{elem.display_name}</p>
+                  <p>{elem.handle}</p>
                 )
               })}
             </body>
@@ -123,7 +123,7 @@ const StaticComment: FC = async ({ comment_id, route }) => {
   const commentId: string = comment_id;
 
   const queryCommenter = await turso.execute({
-    sql: ` SELECT u.display_name, u.avatar
+    sql: ` SELECT u.handle, u.avatar
       FROM users u
       JOIN comments c ON c.user_id = u.id
       WHERE c.uuid = ?;
@@ -135,7 +135,7 @@ const StaticComment: FC = async ({ comment_id, route }) => {
     args: [commentId],
   });
   const queryCommentLikes = await turso.execute({
-    sql: `SELECT u.display_name, u.avatar
+    sql: `SELECT u.handle, u.avatar
     FROM users u
     JOIN likes l ON l.user_id = u.id
     JOIN comments c ON l.comment_id = c.id
@@ -152,7 +152,7 @@ const StaticComment: FC = async ({ comment_id, route }) => {
     args: [commentId],
   });
   const queryPoster = await turso.execute({
-    sql: `SELECT u.display_name, u.avatar
+    sql: `SELECT u.handle, u.avatar
     FROM users u
     JOIN posts p ON p.user_id = u.id
     JOIN comments c ON p.id = c.post_id
@@ -171,21 +171,21 @@ const StaticComment: FC = async ({ comment_id, route }) => {
           <>
             <head>
               <title>The Third: Comment</title>
-              <meta property="og:title" content={`${queryCommenter.rows[0].display_name}'s Comment`} />
+              <meta property="og:title" content={`${queryCommenter.rows[0].handle}'s Comment`} />
               <meta property="og:image" content={`${getAvatar(queryCommenter.rows[0].avatar)}`} />
               <meta property="og:url" content={`${route}`} />
             </head>
             <body>
               <div>
                 <h2>Comment</h2>
-                <p>User: {queryCommenter.rows[0].display_name}</p>
+                <p>User: {queryCommenter.rows[0].handle}</p>
                 <img src={getAvatar(queryCommenter.rows[0].avatar)} />
                 <p>Post: {queryCommentContent.rows[0].content}</p>
                 <p>Likes: {queryCommentLikes.rows.length}</p>
               </div>
               <div>
                 <h2>Original Post</h2>
-                <p>User: {queryPoster.rows[0].display_name}</p>
+                <p>User: {queryPoster.rows[0].handle}</p>
                 <img src={getAvatar(queryPoster.rows[0].avatar)} />
                 <p>Post: {queryPostContent.rows[0].content}</p>
               </div>
