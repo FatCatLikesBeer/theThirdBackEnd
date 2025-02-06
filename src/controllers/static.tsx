@@ -1,6 +1,8 @@
 import type { FC } from "hono/jsx";
 import { turso } from "../library/dev_turso.js";
 
+const bucketURL = "http://my-bucket.mooo.com:9000/the-third/";
+
 const StaticUser: FC = async ({ user_id }) => {
   const userId: string = user_id;
 
@@ -11,6 +13,8 @@ const StaticUser: FC = async ({ user_id }) => {
 
   const { email, display_name, avatar } = { ...queryContent.rows[0] };
 
+  const avatarURI = `${bucketURL}${avatar}.jpg`;
+
   return (
     <>
       {
@@ -20,7 +24,7 @@ const StaticUser: FC = async ({ user_id }) => {
             <h1>Static User</h1>
             <p>Email: {email}</p>
             <p>UserName: {display_name}</p>
-            <p>{avatar}</p>
+            <img src={avatarURI} />
           </>
           :
           <h1>No User Found</h1>
@@ -73,6 +77,8 @@ const StaticPost: FC = async ({ post_id }) => {
   // console.log(queryComments);
   // console.log(queryCommentLikes);
 
+  const avatarURI = `${bucketURL}${queryPostContent.rows[0].avatar}.jpg`;
+
   return (
     <>
       {
@@ -81,7 +87,8 @@ const StaticPost: FC = async ({ post_id }) => {
           <>
             <h1>Static Post</h1>
             <p>{postId}</p>
-            <p>User: {queryPostContent.rows[0].display_name}, {queryPostContent.rows[0].avatar}</p>
+            <p>User: {queryPostContent.rows[0].display_name}</p>
+            <img src={avatarURI} />
             <p>Post: {queryPostContent.rows[0].content}</p>
             <p>Likes: {queryPostLikes.rows.length}</p>
             {queryPostLikes.rows.map((elem) => {

@@ -1,3 +1,4 @@
+import * as dotenv from 'dotenv';
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import type { FC } from 'hono/jsx';
@@ -8,6 +9,7 @@ import StaticPost from './static/post.js';
 
 import api from './routes/api.js';
 
+dotenv.config();
 const app = new Hono();
 
 // SPA
