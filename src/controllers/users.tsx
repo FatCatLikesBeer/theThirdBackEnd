@@ -1,7 +1,15 @@
+import * as dotenv from "dotenv";
+import { getSignedCookie } from "hono/cookie";
+import { verify } from "hono/jwt";
+
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { turso } from "../library/dev_turso.js";
+
+dotenv.config();
+const jwtSecret = String(process.env.JWT_SECRET);
+const cookieSecret = String(process.env.COOKIE_SECRET);
 
 function createUser(c: Context) {
   const response = {
@@ -68,12 +76,40 @@ async function readUserList(c: Context) {
   return c.json(response);
 }
 
-function updateUser(c: Context) {
-  const response = {
-    success: true,
+async function updateUser(c: Context) {
+  let response: APIResponse = {
+    success: false,
     path: `${c.req.path}`,
-    message: 'Authorization is needed for this route!',
+    message: "Failed to update user",
   }
+  const token = await getSignedCookie(c, cookieSecret, "jwt");
+  const requestQuiries = Object.entries(c.req.query());
+  if (requestQuiries.flat().includes("email")) {
+    response.message = "Can not update email at this time";
+    return c.json(response);
+  }
+  const tokenData = await verify(String(token), jwtSecret);
+  const user = tokenData.user;
+
+  let sqlQuery = "UPDATE users SET ";
+  requestQuiries.forEach((elem, i, arr) => {
+    if (arr.length - 1 === i) {
+      sqlQuery += `${elem[0]} = '${elem[1]}' `;
+    } else {
+      sqlQuery += `${elem[0]} = '${elem[1]}', `;
+    }
+  });
+  sqlQuery += `WHERE uuid = '${user}'`;
+
+  try {
+    const query = await turso.execute(sqlQuery);
+    console.log(query);
+    response.success = true;
+    response.message = `${sqlQuery}`;
+  } catch (err) {
+    response.message = `Failed: ${err}`;
+  }
+
   return c.json(response);
 }
 

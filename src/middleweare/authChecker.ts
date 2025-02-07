@@ -30,7 +30,7 @@ export const authChecker = async (c: Context, next: Next) => {
 
   // Check for cookie with key = jwt
   const token = await getSignedCookie(c, cookieSecret, "jwt");
-  if (token === undefined) { return c.json(response) }
+  if (token === undefined) { return c.json(response, 401) }
 
   // Is token valid?
   let payload;
@@ -43,7 +43,7 @@ export const authChecker = async (c: Context, next: Next) => {
     }
   } catch (err) {
     response.message = "Unauthorized Request";
-    return c.json(response);
+    return c.json(response, 401);
   }
 
   // Is payload.user valid?
