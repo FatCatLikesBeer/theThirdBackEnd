@@ -72,7 +72,7 @@ function updateUser(c: Context) {
   const response = {
     success: true,
     path: `${c.req.path}`,
-    message: 'Update User not yet implemented',
+    message: 'Authorization is needed for this route!',
   }
   return c.json(response);
 }

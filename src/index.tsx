@@ -1,6 +1,8 @@
-import * as dotenv from 'dotenv';
-import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { serve } from '@hono/node-server'
+import { cors } from 'hono/cors';
+import * as dotenv from 'dotenv';
+
 import type { FC } from 'hono/jsx';
 import type { Context } from 'hono';
 
@@ -9,6 +11,11 @@ import api from './routes/api.js';
 
 dotenv.config();
 const app = new Hono();
+app.use(cors({
+  origin: "*",
+  allowHeaders: ["Authorization", "Content-Type"],
+  exposeHeaders: ["Authorization"],
+}));
 
 // SPA
 const Test: FC = () => <h1>Welcome to The Third</h1>;
