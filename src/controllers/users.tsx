@@ -78,7 +78,7 @@ async function createUser(c: Context) {
   } catch (err) {
     console.log("squery", sqlQuery);
     console.log("args", sqlArgs);
-    response.message = `DBDrror: ${err}`;
+    response.message = `${err}`;
     return c.json(response, status);
   } finally {
     transaction.close();
@@ -153,14 +153,15 @@ async function updateUser(c: Context) {
     message: "Failed to update user",
   }
 
-  const token = await getSignedCookie(c, cookieSecret, "jwt");
+  // const token = await getSignedCookie(c, cookieSecret, "jwt");
+  // const tokenData = await verify(String(token), jwtSecret);
+  // const user = tokenData.user;
   const requestQuiries = Object.entries(c.req.query());
   if (requestQuiries.flat().includes("email")) {
     response.message = "Can not update email at this time";
     return c.json(response);
   }
-  const tokenData = await verify(String(token), jwtSecret);
-  const user = tokenData.user;
+  const user: string = c.get("uuid");
 
   let sqlQuery = "UPDATE users SET ";
   let sqlValues: any[] = [];
@@ -192,13 +193,39 @@ async function updateUser(c: Context) {
   return c.json(response);
 }
 
-function deleteUser(c: Context) {
+async function deleteUser(c: Context) {
+  let status: ContentfulStatusCode = 400;
   const response = {
-    success: true,
+    success: false,
     path: `${c.req.path}`,
-    message: 'Delete User not yet implemented',
+    message: "Bad request",
   }
-  return c.json(response);
+
+  const uuid = c.get("uuid");
+
+  // Check that user exists
+  const transaction = await turso.transaction();
+  try {
+    const deleteUserTransaction = await transaction.execute({
+      sql: "DELETE FROM users WHERE uuid = ? RETURNING email;",
+      args: [uuid],
+    });
+    if (deleteUserTransaction.rows.length === 0) {
+      throw new Error("User not found");
+    } else {
+      await transaction.commit();
+      status = 200;
+      console.log(deleteUserTransaction);
+      response.message = `User with email '${deleteUserTransaction.rows[0].email}' has been deleted`;
+    }
+  } catch (err) {
+    response.message = `${err}`;
+    return c.json(response, status);
+  } finally {
+    transaction.close();
+  }
+
+  return c.json(response, status);
 }
 
 const userControllers = { createUser, readUserList, readUserDetail, updateUser, deleteUser, }

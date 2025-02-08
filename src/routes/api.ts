@@ -36,7 +36,7 @@ const cookieSecret = String(process.env.COOKIE_SECRET);
 
 api.get('/get-good-cookie', async (c: Context) => {
   const payload = {
-    user: "e057350c68012e6be61d1f2c5fe27c9c",                 // user 3 UUID
+    user: "36d9cb69f79e158d31396a7b973ba7e4",                 // user 3 UUID
     exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 5),  // 5 days
     nbf: Math.floor(Date.now() / 1000) - 300,
     iat: Math.floor(Date.now() / 1000),
@@ -50,7 +50,7 @@ api.get('/get-good-cookie', async (c: Context) => {
 
 api.get('/get-bad-cookie', async (c: Context) => {
   const payload = {
-    user: "e057350c68012e6be61d1f2c5fe27c9c",                 // user 3 UUID
+    user: "36d9cb69f79e158d31396a7b973ba7e4",                 // user 3 UUID
     exp: Math.floor(Date.now() / 1000) - (60 * 60 * 24 * 5),  // 5 days ago
     nbf: Math.floor(Date.now() / 1000) - 300,
     iat: Math.floor(Date.now() / 1000),

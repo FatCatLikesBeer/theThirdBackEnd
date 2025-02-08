@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
-import { getSignedCookie, setSignedCookie } from 'hono/cookie';
-import { sign, decode, verify } from 'hono/jwt';
+import { getSignedCookie, setSignedCookie, deleteCookie } from 'hono/cookie';
+import { sign, verify } from 'hono/jwt';
 import type { Context, Next } from 'hono';
 
 import { turso } from '../library/dev_turso.js';
@@ -30,7 +30,10 @@ export const authChecker = async (c: Context, next: Next) => {
 
   // Check for cookie with key = jwt
   const token = await getSignedCookie(c, cookieSecret, "jwt");
-  if (token === undefined) { return c.json(response, 401) }
+  if (token === undefined) {
+    deleteCookie(c, 'jwt');
+    return c.json(response, 401);
+  }
 
   // Is token valid?
   let payload;
@@ -42,6 +45,7 @@ export const authChecker = async (c: Context, next: Next) => {
       throw new Error("Unauthorized Request");
     }
   } catch (err) {
+    deleteCookie(c, 'jwt');
     response.message = "Unauthorized Request";
     return c.json(response, 401);
   }
@@ -49,13 +53,17 @@ export const authChecker = async (c: Context, next: Next) => {
   // Is payload.user valid?
   const checkUser = await turso.execute(`SELECT id FROM users WHERE uuid = '${payload.user}'`);
   if (checkUser.rows.length === 0) {
+    deleteCookie(c, 'jwt');
     response.message = "Unauthorized User";
-    return c.json(response);
+    return c.json(response, 401);
   }
 
+  // All is good, sign new token and sign new cookie
   const user = String(payload.user);
   const signedToken = await sign(createPayload(user) as any, jwtSecret);
   setSignedCookie(c, 'jwt', signedToken, cookieSecret);
+
+  c.set("uuid", user);
 
   // All is good
   await next();
