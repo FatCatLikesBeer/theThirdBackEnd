@@ -1,6 +1,7 @@
 import * as dotenv from "dotenv";
 import { getSignedCookie } from "hono/cookie";
 import { verify } from "hono/jwt";
+import { z } from 'zod';
 
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
@@ -11,13 +12,79 @@ dotenv.config();
 const jwtSecret = String(process.env.JWT_SECRET);
 const cookieSecret = String(process.env.COOKIE_SECRET);
 
-function createUser(c: Context) {
-  const response = {
-    success: true,
+async function createUser(c: Context) {
+  let status: ContentfulStatusCode = 400;
+  const response: APIResponse = {
+    success: false,
     path: `${c.req.path}`,
-    message: 'POST not yet implemented',
+    message: "Error, bad request",
   }
-  return c.json(response);
+  const requestQuiries = c.req.query();
+
+  // Verify requred fields
+  try {
+    if (requestQuiries.email == "") { throw new Error("Email required") }
+    if (requestQuiries.password == "") { throw new Error("Password requred") }
+    if (requestQuiries.handle == "") { throw new Error("Handle required") }
+    if (requestQuiries.handle.length < 4) { throw new Error("Handle too short") }
+    if (requestQuiries.password.length < 8) { throw new Error("Password too short") }
+  } catch (err) {
+    response.message = `${err}`;
+    return c.json(response, status);
+  }
+
+  try {
+    // Validate email
+    const emailSchema = z.string().email();
+    const validationAttempt = emailSchema.safeParse(requestQuiries.email);
+    if (!validationAttempt.success) { throw new Error("Email not valid or already in use") }
+
+    // Is email in use
+    const emailQuery = await turso.execute({
+      sql: "SELECT COUNT(*) FROM users WHERE email = ?",
+      args: [requestQuiries.email],
+    });
+    if (0 != (Object.values(emailQuery.rows[0])[0])) { throw new Error("Email not valid or already in use") }
+
+    // Is handle in use
+    const handleQuery = await turso.execute({
+      sql: "SELECT COUNT(*) FROM users WHERE handle = ?",
+      args: [requestQuiries.handle],
+    });
+    if (0 != (Object.values(handleQuery.rows[0])[0])) { throw new Error("Handle already taken") }
+  } catch (err) {
+    response.message = `${err}`;
+    return c.json(response, status);
+  }
+
+  const columns = ["email", "handle", "display_name", "password", "about", "bio", "location"];
+  const sqlQuery = ` INSERT INTO users (${columns.join(", ")}) VALUES (?, ?, ?, ?, ?, ?, ?);`;
+  const sqlArgs = columns.map((elem) => { return requestQuiries[elem] != undefined ? requestQuiries[elem] : null });
+
+  // Insert to database
+  const transaction = await turso.transaction();
+  try {
+    await transaction.execute({
+      sql: sqlQuery,
+      args: sqlArgs,
+    });
+    await transaction.commit();
+
+    status = 200;
+    response.success = true;
+    response.data = sqlArgs;
+    response.message = `User created: ${requestQuiries.handle}`;
+
+  } catch (err) {
+    console.log("squery", sqlQuery);
+    console.log("args", sqlArgs);
+    response.message = `DBDrror: ${err}`;
+    return c.json(response, status);
+  } finally {
+    transaction.close();
+  }
+
+  return c.json(response, status);
 }
 
 async function readUserDetail(c: Context) {
@@ -64,7 +131,10 @@ async function readUserList(c: Context) {
       data: [...queryUsers.rows],
     }
   } else {
-    const queryUsers = await turso.execute(`SELECT handle, display_name, created_at, avatar FROM users WHERE handle LIKE '%${query}%'`);
+    const queryUsers = await turso.execute({
+      sql: "SELECT handle, display_name, created_at, avatar FROM users WHERE handle LIKE ?",
+      args: [query],
+    });
     response = {
       success: true,
       path: `${c.req.path}`,
@@ -82,6 +152,7 @@ async function updateUser(c: Context) {
     path: `${c.req.path}`,
     message: "Failed to update user",
   }
+
   const token = await getSignedCookie(c, cookieSecret, "jwt");
   const requestQuiries = Object.entries(c.req.query());
   if (requestQuiries.flat().includes("email")) {
@@ -92,17 +163,25 @@ async function updateUser(c: Context) {
   const user = tokenData.user;
 
   let sqlQuery = "UPDATE users SET ";
+  let sqlValues: any[] = [];
   requestQuiries.forEach((elem, i, arr) => {
     if (arr.length - 1 === i) {
-      sqlQuery += `${elem[0]} = '${elem[1]}' `;
+      sqlQuery += `${elem[0]} = ? `;
+      sqlValues.push([elem[1]]);
     } else {
-      sqlQuery += `${elem[0]} = '${elem[1]}', `;
+      sqlQuery += `${elem[0]} = ?, `;
+      sqlValues.push([elem[1]]);
     }
   });
   sqlQuery += `WHERE uuid = '${user}'`;
 
   try {
-    const query = await turso.execute(sqlQuery);
+    console.log("Full Query", sqlQuery);
+    console.log("sqlValues", sqlValues);
+    const query = await turso.execute({
+      sql: sqlQuery,
+      args: [...sqlValues],
+    });
     console.log(query);
     response.success = true;
     response.message = `${sqlQuery}`;
