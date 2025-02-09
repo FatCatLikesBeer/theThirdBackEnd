@@ -4,8 +4,8 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { turso } from "../library/dev_turso.js";
 
 async function createPost(c: Context) {
-  const status: ContentfulStatusCode = 400;
-  const response = {
+  let status: ContentfulStatusCode = 400;
+  const response: APIResponse = {
     success: false,
     path: `${c.req.path}`,
     message: 'POST not yet implemented',
@@ -51,19 +51,62 @@ async function readPostDetail(c: Context) {
   return c.json(response, status);
 };
 
+// If queries exist, then search
+// Else, return most recent posts
 async function readPostList(c: Context) {
-  const status: ContentfulStatusCode = 400;
-  const response = {
+  let status: ContentfulStatusCode = 400;
+  const response: APIResponse = {
     success: false,
     path: `${c.req.path}`,
-    message: 'GET List not yet implemented',
+    message: 'Bad request',
   }
+
+  try {
+    const searchQuery = c.req.query();
+    if (Object.values(searchQuery).length === 0) {
+      // most recent posts
+      const queryPosts = await turso.execute(`
+        SELECT u.handle, u.avatar, p.content, p.created_at, COUNT(l.post_id) as like_count
+        FROM posts p
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN likes l ON l.post_id = p.id
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
+        LIMIT 20;
+      `);
+
+      response.message = `Query returned ${queryPosts.rows.length} post${queryPosts.rows.length === 1 ? "" : "s"}`;
+      response.data = [...queryPosts.rows];
+      status = 200;
+    } else {
+      // search
+      const querySearch = await turso.execute({
+        sql: `
+          SELECT u.handle, u.avatar, p.content, p.created_at, COUNT(l.post_id) as like_count
+          FROM posts p
+          JOIN users u ON p.user_id = u.id
+          LEFT JOIN likes l ON l.post_id = p.id
+          WHERE p.content LIKE ?
+          GROUP BY p.id
+          ORDER BY p.created_at DESC
+          LIMIT 20;
+        `,
+        args: [`%${searchQuery.search}%`],
+      });
+      response.message = `Query returned ${querySearch.rows.length} post${querySearch.rows.length === 1 ? "" : "s"}`;
+      response.data = [...querySearch.rows];
+      status = 200;
+    }
+  } catch (err) {
+    response.message = `${err}`;
+  }
+
   return c.json(response, status);
 }
 
 async function updatePost(c: Context) {
-  const status: ContentfulStatusCode = 400;
-  const response = {
+  let status: ContentfulStatusCode = 400;
+  const response: APIResponse = {
     success: false,
     path: `${c.req.path}`,
     message: 'Update Post not yet implemented',
@@ -72,8 +115,8 @@ async function updatePost(c: Context) {
 }
 
 async function deletePost(c: Context) {
-  const status: ContentfulStatusCode = 400;
-  const response = {
+  let status: ContentfulStatusCode = 400;
+  const response: APIResponse = {
     success: false,
     path: `${c.req.path}`,
     message: 'Delete Post not yet implemented',

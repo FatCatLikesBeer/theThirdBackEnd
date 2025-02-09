@@ -68,3 +68,13 @@ export const authChecker = async (c: Context, next: Next) => {
   // All is good
   await next();
 }
+
+export const retrieveUUID = async (c: Context): Promise<string | undefined> => {
+  const token = await getSignedCookie(c, cookieSecret, "jwt");
+  if (token === undefined) { return undefined }
+
+  const jwtPayload = await verify(String(token), jwtSecret);
+  if (jwtPayload.user === undefined) { return undefined }
+
+  return String(jwtPayload.user);
+}
