@@ -27,6 +27,7 @@ api.route("/posts/:postId/likes", likes);
 api.route("/posts/:postId/comments/:commentId/likes", likes);
 api.route('/friends', friends);
 
+// Couple routes for getting a legit user cookie
 import * as dotenv from 'dotenv';
 
 dotenv.config();

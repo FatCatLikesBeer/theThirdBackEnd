@@ -35,7 +35,7 @@ serve({
   port
 });
 
-// TODO: Install a data validator: ZOD or just parameterize the queries
-// TODO: Create endpoint logic: users, friends, posts, comments, likes
+// TODO: Create endpoint logic: friends, posts, comments, likes
+// TODO: Create avatar stuff
 // TODO: Draft up basic frontend
 // TODO: Implemented JWT & TOTP
