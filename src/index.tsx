@@ -35,7 +35,7 @@ serve({
   port
 });
 
-// TODO: Create endpoint logic: posts, friends, comments, likes
+// TODO: Create endpoint logic: friends, comments, likes
 // TODO: Create avatar stuff
 // TODO: Draft up basic frontend
 // TODO: Implemented JWT & TOTP
