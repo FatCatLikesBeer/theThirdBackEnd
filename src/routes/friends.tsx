@@ -8,6 +8,6 @@ friends.post('/:friendId', authChecker, friendControllers.createFriend);
 friends.get('/', friendControllers.readFriendList);                 // Friends lists are public
 friends.get('/:id', friendControllers.readFriendDetail);
 friends.put('/', authChecker, friendControllers.updateFriend);
-friends.delete('/', authChecker, friendControllers.deleteFriend);
+friends.delete('/:friendId', authChecker, friendControllers.deleteFriend);
 
 export default friends;

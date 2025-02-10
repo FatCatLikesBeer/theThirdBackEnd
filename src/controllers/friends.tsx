@@ -33,6 +33,8 @@ async function createFriend(c: Context) {
   } catch (err) {
     console.error(err);
     response.message = `{err}`;
+  } finally {
+    transaction.close();
   }
 
   response.success = String(status).search("2") === 0 ? true : false;
@@ -101,8 +103,34 @@ async function deleteFriend(c: Context) {
   const response: APIResponse = {
     success: String(status).search("2") === 0 ? true : false,
     path: `${c.req.path}`,
-    message: 'Delete Friend not yet implemented',
+    message: 'Server Error',
   }
+  const friendUUID = c.req.param('friendId');
+  const userUUID = c.get('uuid');
+
+  const transaction = await turso.transaction();
+  try {
+    const deleteFriendQuery = await transaction.execute({
+      sql: `DELETE FROM friends
+        WHERE user_id = (SELECT id FROM users WHERE uuid = ?)
+        AND friend_id = (SELECT id FROM users WHERE uuid = ?);
+      `,
+      args: [userUUID, friendUUID],
+    });
+
+    if (deleteFriendQuery.rowsAffected) {
+      status = 200;
+      response.message = `${friendUUID} deleted from friends`;
+    } else {
+      response.message = `${friendUUID} NOT deleted from friends`;
+    }
+    await transaction.commit();
+  } catch (err) {
+    response.message = `{err}`;
+  } finally {
+    transaction.close();
+  }
+
   response.success = String(status).search("2") === 0 ? true : false;
   return c.json(response, status);
 }
