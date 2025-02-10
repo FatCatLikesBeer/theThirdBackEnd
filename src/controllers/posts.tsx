@@ -25,7 +25,7 @@ async function readPostDetail(c: Context) {
 
   try {
     const queryPost = await turso.execute({
-      sql: `SELECT p.content, p.created_at, u.uuid,
+      sql: `SELECT p.uuid, p.content, p.created_at, u.uuid,
         u.avatar, u.handle, COUNT(l.post_id) AS like_count
         FROM posts p
         JOIN users u ON p.user_id = u.id
@@ -66,7 +66,7 @@ async function readPostList(c: Context) {
     if (Object.values(searchQuery).length === 0) {
       // most recent posts
       const queryPosts = await turso.execute(`
-        SELECT u.handle, u.avatar, p.content, p.created_at, COUNT(l.post_id) as like_count
+        SELECT u.handle, u.avatar, p.uuid, p.content, p.created_at, COUNT(l.post_id) as like_count
         FROM posts p
         JOIN users u ON p.user_id = u.id
         LEFT JOIN likes l ON l.post_id = p.id
@@ -82,7 +82,7 @@ async function readPostList(c: Context) {
       // search
       const querySearch = await turso.execute({
         sql: `
-          SELECT u.handle, u.avatar, p.content, p.created_at, COUNT(l.post_id) as like_count
+          SELECT u.handle, u.avatar, p.uuid, p.content, p.created_at, COUNT(l.post_id) as like_count
           FROM posts p
           JOIN users u ON p.user_id = u.id
           LEFT JOIN likes l ON l.post_id = p.id
@@ -107,20 +107,64 @@ async function readPostList(c: Context) {
 async function updatePost(c: Context) {
   let status: ContentfulStatusCode = 400;
   const response: APIResponse = {
-    success: false,
+    success: true,
     path: `${c.req.path}`,
-    message: 'Update Post not yet implemented',
+    message: 'Posts can not be edited',
   }
   return c.json(response, status);
 }
 
 async function deletePost(c: Context) {
-  let status: ContentfulStatusCode = 400;
+  let status: ContentfulStatusCode = 500;
   const response: APIResponse = {
     success: false,
     path: `${c.req.path}`,
-    message: 'Delete Post not yet implemented',
+    message: 'Can not delete post',
   }
+
+  const uuidUser = c.get('uuid');
+  const postId = c.req.param("id");
+
+  const transaction = await turso.transaction();
+  try {
+    const verifyRequest = await transaction.execute({
+      sql: `SELECT u.uuid AS userID, p.uuid AS postID
+        FROM users u
+        JOIN posts p ON p.user_id = u.id
+        WHERE p.uuid = ?;
+      `,
+      args: [postId]
+    });
+    // cant read userID if it doesn't exist
+    console.log("request uuid", uuidUser);
+    console.log("request post", postId);
+    console.log("first sql query", verifyRequest);
+    if (postId != verifyRequest.rows[0]?.postID) {
+      status = 404;
+      throw new Error("Post can not be found");
+    }
+    if (uuidUser != verifyRequest.rows[0]?.userID) {
+      status = 401;
+      throw new Error("Unauthorized");
+    }
+    if ((verifyRequest.rows[0].userID === uuidUser) && (verifyRequest.rows[0].postID === postId)) {
+      const deletePost = await transaction.execute({
+        sql: 'DELETE FROM posts WHERE uuid = ? RETURNING uuid',
+        args: [postId],
+      });
+
+      status = 200;
+      response.message = `Post with UUID: '${deletePost.rows[0].uuid}' has been deleted`;
+    }
+
+    await transaction.commit();
+  } catch (err) {
+    console.error(err);
+    response.message = `${err}`;
+  } finally {
+    transaction.close();
+  }
+
   return c.json(response, status);
 }
 

@@ -8,6 +8,6 @@ posts.post('/', authChecker, postControllers.createPost);
 posts.get('/', postControllers.readPostList);
 posts.get('/:id', postControllers.readPostDetail);
 posts.put('/', authChecker, postControllers.updatePost);
-posts.delete('/', authChecker, postControllers.deletePost);
+posts.delete('/:id', authChecker, postControllers.deletePost);
 
 export default posts;
