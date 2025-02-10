@@ -124,12 +124,38 @@ async function updateComment(c: Context) {
 async function deleteComment(c: Context) {
   let status: ContentfulStatusCode = 500;
   const commentUUID = c.req.param('commentId');
-  const postUUID = c.req.param('postId');
+  const postUUID = c.req.param("postId");   // This value is unncessary, but may be used in the future
   const userUUID = c.get('uuid');
   const response: APIResponse = {
     success: String(status).search("2") === 0 ? true : false,
     path: `${c.req.path}`,
-    message: 'POST not yet implemented',
+    message: 'Server Error: DELETE comments',
+  }
+
+  const transaction = await turso.transaction();
+
+  try {
+    const deleteComment = await transaction.execute({
+      sql: `DELETE FROM comments
+      WHERE post_id = (SELECT id FROM posts WHERE uuid = ?)
+      AND user_id = (SELECT id FROM users WHERE uuid = ?)
+      AND uuid = ?
+      `,
+      args: [postUUID, userUUID, commentUUID],
+    });
+
+    if (deleteComment.rowsAffected != 0) {
+      status = 200;
+      response.message = "Comment deleted!";
+      response.data = [...deleteComment.rows];
+      await transaction.commit();
+    } else {
+      response.message = "Comment not found OR comment not deleted";
+    }
+  } catch (err) {
+    response.message = `Database error: ${err}`;
+  } finally {
+    transaction.close();
   }
 
   response.success = String(status).search("2") === 0 ? true : false;
