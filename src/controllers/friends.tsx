@@ -8,8 +8,34 @@ async function createFriend(c: Context) {
   const response: APIResponse = {
     success: String(status).search("2") === 0 ? true : false,
     path: `${c.req.path}`,
-    message: 'POST not yet implemented',
+    message: 'Server Error',
   }
+  const friendUUID = c.req.param('friendId');
+  const userUUID = c.get('uuid');
+
+  const transaction = await turso.transaction();
+  try {
+    const createFriend = await transaction.execute({
+      sql: `INSERT OR IGNORE INTO friends (user_id, friend_id)
+      VALUES (
+        (SELECT id FROM users WHERE uuid = ?),
+        (SELECT id FROM users WHERE uuid = ?)
+      );
+      `,
+      args: [userUUID, friendUUID],
+    });
+
+    console.log(createFriend);
+    status = 200;
+    response.data = [...createFriend.rows];
+    response.message = `${userUUID} added ${friendUUID} to their friends list`;
+    await transaction.commit();
+  } catch (err) {
+    console.error(err);
+    response.message = `{err}`;
+  }
+
+  response.success = String(status).search("2") === 0 ? true : false;
   return c.json(response, status);
 }
 
@@ -18,7 +44,7 @@ async function readFriendDetail(c: Context) {
   const response: APIResponse = {
     success: String(status).search("2") === 0 ? true : false,
     path: `${c.req.path}`,
-    message: 'GET Detail not yet implemented',
+    message: 'Server Error',
   }
   const uuidUser = c.req.param('id');
 
@@ -44,6 +70,7 @@ async function readFriendDetail(c: Context) {
     response.message = `${err}`;
   }
 
+  response.success = String(status).search("2") === 0 ? true : false;
   return c.json(response, status);
 };
 
@@ -54,16 +81,18 @@ async function readFriendList(c: Context) {
     path: `${c.req.path}`,
     message: 'Endpoint requires a parameter',
   }
+  response.success = String(status).search("2") === 0 ? true : false;
   return c.json(response, status);
 }
 
 async function updateFriend(c: Context) {
-  let status: ContentfulStatusCode = 500;
+  let status: ContentfulStatusCode = 501;
   const response: APIResponse = {
     success: String(status).search("2") === 0 ? true : false,
     path: `${c.req.path}`,
-    message: 'Update Friend not yet implemented',
+    message: 'Endpoint not in use',
   }
+  response.success = String(status).search("2") === 0 ? true : false;
   return c.json(response, status);
 }
 
@@ -74,6 +103,7 @@ async function deleteFriend(c: Context) {
     path: `${c.req.path}`,
     message: 'Delete Friend not yet implemented',
   }
+  response.success = String(status).search("2") === 0 ? true : false;
   return c.json(response, status);
 }
 

@@ -4,7 +4,7 @@ import { authChecker } from '../middleweare/authChecker.js';
 
 const friends = new Hono();
 
-friends.post('/', authChecker, friendControllers.createFriend);
+friends.post('/:friendId', authChecker, friendControllers.createFriend);
 friends.get('/', friendControllers.readFriendList);                 // Friends lists are public
 friends.get('/:id', friendControllers.readFriendDetail);
 friends.put('/', authChecker, friendControllers.updateFriend);
