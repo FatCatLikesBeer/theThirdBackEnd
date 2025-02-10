@@ -36,6 +36,7 @@ serve({
 });
 
 // TODO: Create endpoint logic: friends, comments, likes
-// TODO: Create avatar stuff
+// TODO: Create avatar uploading stuff (this might be relegated to the frontend)
 // TODO: Draft up basic frontend
 // TODO: Implemented JWT & TOTP
+// TODO: Automate turso switching URL when going to prod

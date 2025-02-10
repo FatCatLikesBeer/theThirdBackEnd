@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
-import type { Context } from 'hono';
 import friendControllers from '../controllers/friends.js';
+import { authChecker } from '../middleweare/authChecker.js';
 
 const friends = new Hono();
 
-friends.post('/', friendControllers.createFriend);
-friends.get('/', friendControllers.readFriendList);
+friends.post('/', authChecker, friendControllers.createFriend);
+friends.get('/', friendControllers.readFriendList);                 // Friends lists are public
 friends.get('/:id', friendControllers.readFriendDetail);
-friends.put('/', friendControllers.updateFriend);
-friends.delete('/', friendControllers.deleteFriend);
+friends.put('/', authChecker, friendControllers.updateFriend);
+friends.delete('/', authChecker, friendControllers.deleteFriend);
 
 export default friends;
