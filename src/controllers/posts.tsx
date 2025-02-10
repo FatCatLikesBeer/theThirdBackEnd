@@ -4,12 +4,40 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { turso } from "../library/dev_turso.js";
 
 async function createPost(c: Context) {
-  let status: ContentfulStatusCode = 400;
+  const uuid = c.get("uuid");
+  let status: ContentfulStatusCode = 500;
   const response: APIResponse = {
     success: false,
     path: `${c.req.path}`,
-    message: 'POST not yet implemented',
+    message: 'Can not create post',
   }
+
+  const postContent = c.req.queries('post');
+
+  const transaction = await turso.transaction();
+  try {
+    const postAttempt = await transaction.execute({
+      sql: `INSERT INTO posts (user_id, content)
+      SELECT id, ? FROM users WHERE uuid = ?
+      RETURNING content, created_at, uuid;
+      `,
+      args: [postContent, uuid],
+    });
+
+    status = 200;
+    response.success = true;
+    response.message = `Created post with uuid: ${postAttempt.rows[0].uuid}`;
+    response.data = { ...postAttempt.rows[0] }
+
+    await transaction.commit();
+  } catch (err) {
+    console.error("POST ERROR", err);
+    status = 400;
+    response.message = `${err}`;
+  } finally {
+    transaction.close();
+  }
+
   return c.json(response, status);
 }
 
@@ -39,6 +67,7 @@ async function readPostDetail(c: Context) {
 
     if (queryPost.rows.length != 0) {
       status = 200;
+      response.success = true;
       response.message = `Post for uuid: ${uuid}`;
       response.data = { ...queryPost.rows[0] }
     } else {
@@ -95,6 +124,7 @@ async function readPostList(c: Context) {
       });
       response.message = `Query returned ${querySearch.rows.length} post${querySearch.rows.length === 1 ? "" : "s"}`;
       response.data = [...querySearch.rows];
+      response.success = true;
       status = 200;
     }
   } catch (err) {
@@ -105,7 +135,7 @@ async function readPostList(c: Context) {
 }
 
 async function updatePost(c: Context) {
-  let status: ContentfulStatusCode = 400;
+  let status: ContentfulStatusCode = 501;
   const response: APIResponse = {
     success: true,
     path: `${c.req.path}`,
@@ -154,6 +184,7 @@ async function deletePost(c: Context) {
       });
 
       status = 200;
+      response.success = true;
       response.message = `Post with UUID: '${deletePost.rows[0].uuid}' has been deleted`;
     }
 
