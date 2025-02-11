@@ -9,7 +9,7 @@ async function createLike(c: Context) {
   const commentUUID = c.req.param('commentId') || null;
   const userUUID = c.get("uuid");
   const response: APIResponse = {
-    success: true,
+    success: String(status).search("2") === 0 ? true : false,
     path: `${c.req.path}`,
     message: 'Server Error: POST like',
   }
@@ -50,32 +50,67 @@ async function createLike(c: Context) {
     transaction.close();
   }
 
+  response.success = String(status).search("2") === 0 ? true : false;
   return c.json(response, status);
 }
 
-async function readLikeDetail(c: Context) {
+async function readLikes(c: Context) {
   let status: ContentfulStatusCode = 500;
   const postUUID = c.req.param('postId');
   const commentUUID = c.req.param('commentId') || null;
-  const userUUID = c.get("uuid");
+  const userUUID = c.get("uuid") || null;
+  const count = c.req.query('count') === undefined ? false : true;
+  console.log("use count?", count);
   const response: APIResponse = {
-    success: true,
+    success: String(status).search("2") === 0 ? true : false,
     path: `${c.req.path}`,
-    message: 'POST not yet implemented',
+    message: 'Server Error: GET like',
   }
-  return c.json(response, status);
-};
 
-async function readLikeList(c: Context) {
-  let status: ContentfulStatusCode = 500;
-  const postUUID = c.req.param('postId');
-  const commentUUID = c.req.param('commentId') || null;
-  const userUUID = c.get("uuid");
-  const response: APIResponse = {
-    success: true,
-    path: `${c.req.path}`,
-    message: 'POST not yet implemented',
+  const countQuery = commentUUID === null
+    ?
+    `SELECT COUNT(*) as count FROM likes WHERE post_id = (SELECT id FROM posts WHERE uuid = ?);`
+    :
+    `SELECT COUNT(*) as count FROM likes WHERE comment_id = (SELECT id FROM comments WHERE uuid = ?);`
+    ;
+  const sqlQuery = commentUUID === null
+    ?
+    `SELECT u.uuid, u.handle, u.avatar, u.display_name
+        FROM users u
+        JOIN likes l ON l.user_id = u.id
+        WHERE l.post_id = (SELECT id FROM posts WHERE uuid = ?)
+      ;`
+    :
+    `SELECT u.uuid, u.handle, u.avatar, u.display_name
+        FROM users u
+        JOIN likes l ON l.user_id = u.id
+        WHERE l.comment_id = (SELECT id FROM comments WHERE uuid = ?)
+      ;`
+    ;
+  const sqlArgs = commentUUID === null ? [postUUID] : [commentUUID];
+  const messageTarget = commentUUID === null ? "post" : "comment";
+
+  try {
+    const likeDetail = await turso.execute({
+      sql: count ? countQuery : sqlQuery,
+      args: sqlArgs,
+    });
+
+    console.log(likeDetail);
+
+    status = 200;
+    if (likeDetail.rows.length != 0) {
+      response.message = count ? `Likes count for ${messageTarget}.` : `Likes for ${messageTarget}.`;
+      response.data = count ? { count: likeDetail.rows[0].count } : [...likeDetail.rows];
+    } else {
+      response.message = `No likes found for ${messageTarget}`;
+    }
+
+  } catch (err) {
+    response.message = `Database error: ${err}`;
   }
+
+  response.success = String(status).search("2") === 0 ? true : false;
   return c.json(response, status);
 }
 
@@ -85,10 +120,11 @@ async function updateLike(c: Context) {
   const commentUUID = c.req.param('commentId') || null;
   const userUUID = c.get("uuid");
   const response: APIResponse = {
-    success: true,
+    success: String(status).search("2") === 0 ? true : false,
     path: `${c.req.path}`,
     message: 'POST not yet implemented',
   }
+  response.success = String(status).search("2") === 0 ? true : false;
   return c.json(response, status);
 }
 
@@ -98,15 +134,16 @@ async function deleteLike(c: Context) {
   const commentUUID = c.req.param('commentId') || null;
   const userUUID = c.get("uuid");
   const response: APIResponse = {
-    success: true,
+    success: String(status).search("2") === 0 ? true : false,
     path: `${c.req.path}`,
     message: 'POST not yet implemented',
   }
+  response.success = String(status).search("2") === 0 ? true : false;
   return c.json(response, status);
 }
 
 const likeControllers = {
-  createLike, readLikeList, readLikeDetail, updateLike, deleteLike,
+  createLike, readLikes, updateLike, deleteLike,
 }
 
 export default likeControllers;
