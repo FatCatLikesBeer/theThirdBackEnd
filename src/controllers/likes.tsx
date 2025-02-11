@@ -115,14 +115,14 @@ async function readLikes(c: Context) {
 }
 
 async function updateLike(c: Context) {
-  let status: ContentfulStatusCode = 500;
+  let status: ContentfulStatusCode = 501;
   const postUUID = c.req.param('postId');
   const commentUUID = c.req.param('commentId') || null;
   const userUUID = c.get("uuid");
   const response: APIResponse = {
     success: String(status).search("2") === 0 ? true : false,
     path: `${c.req.path}`,
-    message: 'POST not yet implemented',
+    message: 'Endpoint not in use',
   }
   response.success = String(status).search("2") === 0 ? true : false;
   return c.json(response, status);
@@ -138,6 +138,39 @@ async function deleteLike(c: Context) {
     path: `${c.req.path}`,
     message: 'POST not yet implemented',
   }
+
+  const sqlQuery = commentUUID === null
+    ?
+    `DELETE FROM likes
+      WHERE user_id = (SELECT id FROM users WHERE uuid = ?)
+      AND post_id = (SELECT id FROM posts WHERE uuid = ?)
+    ;`
+    :
+    `DELETE FROM likes
+      WHERE user_id = (SELECT id FROM users WHERE uuid = ?)
+      AND comment_id = (SELECT id FROM comments WHERE uuid = ?)
+    ;`
+    ;
+  const sqlArgs = commentUUID === null ? [userUUID, postUUID] : [userUUID, commentUUID];
+  const messageTarget = commentUUID === null ? "post" : "comment";
+  const messageUUID = commentUUID === null ? postUUID : commentUUID;
+
+  const transaction = await turso.transaction();
+  try {
+    const deleteLike = await transaction.execute({ sql: sqlQuery, args: sqlArgs });
+    if (deleteLike.rowsAffected) {
+      status = 200;
+      response.message = `Like for ${messageTarget} ${messageUUID} has been deleted`;
+    } else {
+      response.message = `Like for ${messageTarget} ${messageUUID} NOT deleted`;
+    }
+    await transaction.commit();
+  } catch (err) {
+    response.message = `Database error: ${err}`;
+  } finally {
+    transaction.close();
+  }
+
   response.success = String(status).search("2") === 0 ? true : false;
   return c.json(response, status);
 }
