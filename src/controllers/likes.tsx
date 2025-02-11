@@ -1,73 +1,108 @@
 import type { Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-function createLike(c: Context) {
-  const postId = c.req.param('postId');
-  const commentId = c.req.param('commentId') || null;
-  const response = {
+import { turso } from "../library/dev_turso.js";
+
+async function createLike(c: Context) {
+  let status: ContentfulStatusCode = 500;
+  const postUUID = c.req.param('postId');
+  const commentUUID = c.req.param('commentId') || null;
+  const userUUID = c.get("uuid");
+  const response: APIResponse = {
     success: true,
-    type: commentId === null ? "post" : "comment",
-    postId: postId,
-    commentId: commentId,
+    path: `${c.req.path}`,
+    message: 'Server Error: POST like',
+  }
+
+  const sqlQuery = commentUUID === null ?
+    `INSERT INTO likes (post_id, user_id)
+      VALUES (
+        (SELECT id FROM posts WHERE uuid = ?),
+        (SELECT id FROM users WHERE uuid = ?)
+      )
+    ;`
+    :
+    ` INSERT INTO likes (comment_id, user_id)
+      VALUES (
+        (SELECT id FROM comments WHERE uuid = ?),
+        (SELECT id FROM users WHERE uuid = ?)
+      )
+    ;`;
+
+  const sqlArgs = commentUUID === null ? [postUUID, userUUID] : [commentUUID, userUUID];
+  const messageTarget = commentUUID === null ? "post" : "comment";
+  const transaction = await turso.transaction();
+  try {
+    const createLike = await transaction.execute({
+      sql: sqlQuery,
+      args: sqlArgs,
+    });
+
+    if (createLike.rowsAffected != 0) {
+      status = 200;
+      response.message = `You liked ${messageTarget}: ${postUUID}`;
+    }
+
+    await transaction.commit();
+  } catch (err) {
+    response.message = `Database error: ${err}`;
+  } finally {
+    transaction.close();
+  }
+
+  return c.json(response, status);
+}
+
+async function readLikeDetail(c: Context) {
+  let status: ContentfulStatusCode = 500;
+  const postUUID = c.req.param('postId');
+  const commentUUID = c.req.param('commentId') || null;
+  const userUUID = c.get("uuid");
+  const response: APIResponse = {
+    success: true,
     path: `${c.req.path}`,
     message: 'POST not yet implemented',
   }
-  return c.json(response);
-}
-
-function readLikeDetail(c: Context) {
-  const postId = c.req.param('postId');
-  const commentId = c.req.param('commentId') || null;
-  const response = {
-    success: true,
-    type: commentId === null ? "post" : "comment",
-    postId: postId,
-    commentId: commentId,
-    path: `${c.req.path}`,
-    message: 'GET Detail not yet implemented',
-  }
-  return c.json(response);
+  return c.json(response, status);
 };
 
-function readLikeList(c: Context) {
-  const postId = c.req.param('postId');
-  const commentId = c.req.param('commentId') || null;
-  const response = {
+async function readLikeList(c: Context) {
+  let status: ContentfulStatusCode = 500;
+  const postUUID = c.req.param('postId');
+  const commentUUID = c.req.param('commentId') || null;
+  const userUUID = c.get("uuid");
+  const response: APIResponse = {
     success: true,
-    type: commentId === null ? "post" : "comment",
-    postId: postId,
-    commentId: commentId,
     path: `${c.req.path}`,
-    message: 'GET List not yet implemented',
+    message: 'POST not yet implemented',
   }
-  return c.json(response);
+  return c.json(response, status);
 }
 
-function updateLike(c: Context) {
-  const postId = c.req.param('postId');
-  const commentId = c.req.param('commentId') || null;
-  const response = {
+async function updateLike(c: Context) {
+  let status: ContentfulStatusCode = 500;
+  const postUUID = c.req.param('postId');
+  const commentUUID = c.req.param('commentId') || null;
+  const userUUID = c.get("uuid");
+  const response: APIResponse = {
     success: true,
-    type: commentId === null ? "post" : "comment",
-    postId: postId,
-    commentId: commentId,
     path: `${c.req.path}`,
-    message: 'Update Like not yet implemented\n This endpoint might not be used',
+    message: 'POST not yet implemented',
   }
-  return c.json(response);
+  return c.json(response, status);
 }
 
-function deleteLike(c: Context) {
-  const postId = c.req.param('postId');
-  const commentId = c.req.param('commentId') || null;
-  const response = {
+async function deleteLike(c: Context) {
+  let status: ContentfulStatusCode = 500;
+  const postUUID = c.req.param('postId');
+  const commentUUID = c.req.param('commentId') || null;
+  const userUUID = c.get("uuid");
+  const response: APIResponse = {
     success: true,
-    type: commentId === null ? "post" : "comment",
-    postId: postId,
-    commentId: commentId,
     path: `${c.req.path}`,
-    message: 'Delete Like not yet implemented',
+    message: 'POST not yet implemented',
   }
-  return c.json(response);
+  return c.json(response, status);
 }
 
 const likeControllers = {
