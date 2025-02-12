@@ -1,7 +1,6 @@
 import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
 import { cors } from 'hono/cors';
-import * as dotenv from 'dotenv';
 
 import type { FC } from 'hono/jsx';
 import type { Context } from 'hono';
@@ -9,7 +8,6 @@ import type { Context } from 'hono';
 import statics from './routes/static.js';
 import api from './routes/api.js';
 
-dotenv.config();
 const app = new Hono();
 app.use(cors({
   origin: "*",
@@ -35,7 +33,7 @@ serve({
   port
 });
 
-// TODO: Create endpoint logic: likes
+// TODO: JSDocs for API, Swagger?
 // TODO: Create avatar uploading stuff (this might be relegated to the frontend)
 // TODO: Draft up basic frontend
 // TODO: Implemented JWT & TOTP

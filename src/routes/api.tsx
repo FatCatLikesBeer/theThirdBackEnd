@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { Context } from "hono";
+import type { Context, Next } from "hono";
 
 import { setSignedCookie } from 'hono/cookie';
 import { sign } from 'hono/jwt';
@@ -9,17 +9,11 @@ import posts from "./posts.jsx"
 import comments from "./comments.jsx";
 import friends from "./friends.jsx";
 import likes from "./likes.jsx";
+import { Docs } from "../static/docs.jsx";
 
 const api = new Hono();
 
-api.get("/", (c: Context) => {
-  return c.json({
-    message: "What are you doing here",
-    success: true,
-    route: `${c.req.routePath}`,
-  });
-});
-
+api.get("/", (c: Context) => { return c.html(<Docs />) });
 api.route("/users", users);
 api.route("/posts", posts);
 api.route("/posts/:postId/comments", comments);
