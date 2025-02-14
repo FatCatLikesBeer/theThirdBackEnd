@@ -1,16 +1,9 @@
-import * as dotenv from "dotenv";
-import { getSignedCookie } from "hono/cookie";
-import { verify } from "hono/jwt";
 import { z } from 'zod';
 
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { turso } from "../library/dev_turso.js";
-
-dotenv.config();
-const jwtSecret = String(process.env.JWT_SECRET);
-const cookieSecret = String(process.env.COOKIE_SECRET);
 
 async function createUser(c: Context) {
   let status: ContentfulStatusCode = 400;
@@ -123,7 +116,7 @@ async function readUserList(c: Context) {
   }
 
   if (query == undefined) {
-    const queryUsers = await turso.execute("SELECT handle, display_name, created_at, avatar FROM users");
+    const queryUsers = await turso.execute("SELECT uuid, handle, display_name, created_at, avatar FROM users");
     response = {
       success: true,
       path: `${c.req.path}`,
@@ -132,7 +125,7 @@ async function readUserList(c: Context) {
     }
   } else {
     const queryUsers = await turso.execute({
-      sql: "SELECT handle, display_name, created_at, avatar FROM users WHERE handle LIKE ?",
+      sql: "SELECT uuid, handle, display_name, created_at, avatar FROM users WHERE handle LIKE ?",
       args: [query],
     });
     response = {

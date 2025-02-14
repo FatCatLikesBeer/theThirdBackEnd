@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { Context, Next } from "hono";
+import type { Context } from "hono";
 
 import { setSignedCookie } from 'hono/cookie';
 import { sign } from 'hono/jwt';
@@ -21,6 +21,7 @@ api.route("/posts/:postId/likes", likes);
 api.route("/posts/:postId/comments/:commentId/likes", likes);
 api.route('/friends', friends);
 
+// Delete below after authentication (TOTP) gets implemented
 // Couple routes for getting a legit user cookie
 import * as dotenv from 'dotenv';
 

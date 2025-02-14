@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { turso } from "../library/dev_turso.js";
+import { retrieveUUID } from "../middleweare/authChecker.js";
 
 async function createPost(c: Context) {
   const uuid = c.get("uuid");
@@ -41,20 +42,24 @@ async function createPost(c: Context) {
   return c.json(response, status);
 }
 
+/**
+  * readPostDetail
+  * Queries all details of a post
+  * based on provided uuid
+  */
 async function readPostDetail(c: Context) {
   let status: ContentfulStatusCode = 400;
+  const uuid = c.req.param("id");
   const response: APIResponse = {
     success: false,
     path: `${c.req.path}`,
     message: "Bad request",
   }
 
-  const uuid = c.req.param("id");
-
   try {
     const queryPost = await turso.execute({
-      sql: `SELECT p.uuid, p.content, p.created_at, u.uuid,
-        u.avatar, u.handle, COUNT(l.post_id) AS like_count
+      sql: `SELECT p.uuid AS post_uuid, p.content, p.created_at,
+        u.uuid AS user_uuid, u.avatar, u.handle, COUNT(l.post_id) AS like_count
         FROM posts p
         JOIN users u ON p.user_id = u.id
         LEFT JOIN likes l ON p.id = l.post_id
@@ -80,14 +85,47 @@ async function readPostDetail(c: Context) {
   return c.json(response, status);
 };
 
-// If queries exist, then search
+// If friends=true or false, query most recent friends posts
+// else, if queries exist, then search
 // Else, return most recent posts
 async function readPostList(c: Context) {
   let status: ContentfulStatusCode = 400;
+  const friends = c.req.query("friends");
+  const userUUID = await retrieveUUID(c);
   const response: APIResponse = {
-    success: false,
+    success: String(status).search("2") === 0 ? true : false,
     path: `${c.req.path}`,
     message: 'Bad request',
+  }
+
+  if ((friends) && (userUUID)) {
+    try {
+      const friendsPosts = await turso.execute({
+        sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
+          p.uuid AS post_uuid, p.content, p.created_at,
+          COUNT(c.post_id) AS comment_count, COUNT(l.post_id) AS like_count
+          FROM posts p
+          JOIN friends f ON u.id = f.friend_id
+          JOIN users u ON p.user_id = u.id
+          LEFT JOIN comments c ON c.post_id = p.id
+          LEFT JOIN likes l ON l.post_id = p.id
+          WHERE f.user_id = (SELECT id FROM users WHERE uuid = ?)
+          GROUP BY p.id
+          ORDER BY p.created_at DESC
+          LIMIT 20;
+        `,
+        args: [userUUID],
+      });
+
+      status = 200;
+      response.data = [...friendsPosts.rows];
+      response.message = "List of posts from friends";
+    } catch (err) {
+      console.error("Database error: GET91603", err);
+      response.message = `Database error [GetPosts91638]: ${err}`;
+    }
+    response.success = String(status).search("2") === 0;
+    return c.json(response, status);
   }
 
   try {
@@ -95,10 +133,13 @@ async function readPostList(c: Context) {
     if (Object.values(searchQuery).length === 0) {
       // most recent posts
       const queryPosts = await turso.execute(`
-        SELECT u.handle, u.avatar, p.uuid, p.content, p.created_at, COUNT(l.post_id) as like_count
+        SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
+        p.uuid AS post_uuid, p.content, p.created_at,
+        COUNT(c.post_id) AS comment_count, COUNT(l.post_id) as like_count
         FROM posts p
         JOIN users u ON p.user_id = u.id
         LEFT JOIN likes l ON l.post_id = p.id
+        LEFT JOIN comments c ON c.post_id = p.id
         GROUP BY p.id
         ORDER BY p.created_at DESC
         LIMIT 20;
@@ -111,10 +152,13 @@ async function readPostList(c: Context) {
       // search
       const querySearch = await turso.execute({
         sql: `
-          SELECT u.handle, u.avatar, p.uuid, p.content, p.created_at, COUNT(l.post_id) as like_count
+          SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
+          p.uuid AS post_uuid, p.content, p.created_at,
+          COUNT(c.post_id) AS comment_likes, COUNT(l.post_id) as like_count
           FROM posts p
           JOIN users u ON p.user_id = u.id
           LEFT JOIN likes l ON l.post_id = p.id
+          LEFT JOIN comments c ON c.post_id = c.id
           WHERE p.content LIKE ?
           GROUP BY p.id
           ORDER BY p.created_at DESC
@@ -124,13 +168,13 @@ async function readPostList(c: Context) {
       });
       response.message = `Query returned ${querySearch.rows.length} post${querySearch.rows.length === 1 ? "" : "s"}`;
       response.data = [...querySearch.rows];
-      response.success = true;
       status = 200;
     }
   } catch (err) {
     response.message = `${err}`;
   }
 
+  response.success = String(status).search("2") === 0;
   return c.json(response, status);
 }
 
