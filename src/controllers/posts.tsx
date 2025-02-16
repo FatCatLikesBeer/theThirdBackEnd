@@ -90,6 +90,7 @@ async function readPostDetail(c: Context) {
 // Else, return most recent posts
 async function readPostList(c: Context) {
   let status: ContentfulStatusCode = 400;
+  const user = c.req.query("user") || undefined;
   const friends = c.req.query("friends");
   const userUUID = await retrieveUUID(c);
   const response: APIResponse = {
@@ -98,6 +99,44 @@ async function readPostList(c: Context) {
     message: 'Bad request',
   }
 
+  // Get posts from specific user
+  if (user?.length === 32) {
+    try {
+      const userPosts = await turso.execute({
+        sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
+        p.uuid AS post_uuid, p.content, p.created_at,
+        COUNT(c.post_id) AS comment_count, COUNT(l.post_id) as like_count
+        FROM posts p
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN likes l ON l.post_id = p.id
+        LEFT JOIN comments c ON c.post_id = p.id
+        WHERE u.uuid = ?
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
+        LIMIT 20;
+      `,
+        args: [user],
+      });
+
+      response.data = [...userPosts.rows];
+      status = 200;
+      response.message = `Query returned ${userPosts.rows.length} post${userPosts.rows.length === 1 ? "" : "s"}`;
+      response.success = String(status).search("2") === 0;
+      return c.json(response, status);
+    } catch (err) {
+      status = 500;
+      response.message = `Database error: [GetPosts61839]: ${err}`
+      response.success = String(status).search("2") === 0;
+      return c.json(response, status);
+    }
+  } else if (user) {
+    status = 500;
+    response.message = `Error: [GetPosts11212]: ${user} is not valid`;
+    response.success = String(status).search("2") === 0;
+    return c.json(response, status);
+  }
+
+  // Get posts from friends
   if ((friends) && (userUUID)) {
     try {
       const friendsPosts = await turso.execute({
@@ -129,8 +168,8 @@ async function readPostList(c: Context) {
   }
 
   try {
-    const searchQuery = c.req.query();
-    if (Object.values(searchQuery).length === 0) {
+    const searchQuery = c.req.query("search");
+    if (searchQuery === undefined) {
       // most recent posts
       const queryPosts = await turso.execute(`
         SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
@@ -145,7 +184,7 @@ async function readPostList(c: Context) {
         LIMIT 20;
       `);
 
-      response.message = `Query returned ${queryPosts.rows.length} post${queryPosts.rows.length === 1 ? "" : "s"}`;
+      response.message = `${queryPosts.rows.length} of the most recent post${queryPosts.rows.length === 1 ? "" : "s"}`;
       response.data = [...queryPosts.rows];
       status = 200;
     } else {
@@ -164,9 +203,9 @@ async function readPostList(c: Context) {
           ORDER BY p.created_at DESC
           LIMIT 20;
         `,
-        args: [`%${searchQuery.search}%`],
+        args: [`%${searchQuery}%`],
       });
-      response.message = `Query returned ${querySearch.rows.length} post${querySearch.rows.length === 1 ? "" : "s"}`;
+      response.message = `Search query returned ${querySearch.rows.length} post${querySearch.rows.length === 1 ? "" : "s"}`;
       response.data = [...querySearch.rows];
       status = 200;
     }
