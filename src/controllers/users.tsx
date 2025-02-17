@@ -103,7 +103,7 @@ async function readUserDetail(c: Context) {
     }
     status = 200;
   }
-  return c.json({ response }, status);
+  return c.json(response, status);
 };
 
 async function readUserList(c: Context) {
