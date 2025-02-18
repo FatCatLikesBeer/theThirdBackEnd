@@ -93,6 +93,7 @@ async function readPostDetail(c: Context) {
       response.success = true;
       response.message = `Post for uuid: ${uuid}`;
       response.data = { ...queryPost.rows[0] }
+      response.data.comments = JSON.parse(response.data.comments);
     } else {
       throw new Error("Post may not exist");
     }

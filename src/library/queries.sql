@@ -12,7 +12,7 @@ SELECT u.uuid AS user_uuid, u.avatar, u.display_name, u.handle,
       'avatar', u2.avatar,
       'likes', l2.like_count
     )
-  ), []) AS comments
+  ), '[]') AS comments
   FROM posts p
   LEFT JOIN users u ON u.id = p.user_id
   LEFT JOIN comments c ON c.post_id = p.id
