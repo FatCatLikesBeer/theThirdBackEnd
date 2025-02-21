@@ -1,3 +1,4 @@
+import mailer from '../library/mailer.js';
 import { z } from 'zod';
 
 import type { Context } from "hono";
@@ -50,11 +51,11 @@ async function createUser(c: Context) {
     return c.json(response, status);
   }
 
+  // Insert to database
   const columns = ["email", "handle", "display_name", "password", "about", "bio", "location"];
   const sqlQuery = ` INSERT INTO users (${columns.join(", ")}) VALUES (?, ?, ?, ?, ?, ?, ?);`;
   const sqlArgs = columns.map((elem) => { return requestQuiries[elem] != undefined ? requestQuiries[elem] : null });
 
-  // Insert to database
   const transaction = await turso.transaction();
   try {
     await transaction.execute({

@@ -179,7 +179,7 @@ async function readPostList(c: Context) {
       response.data = [...friendsPosts.rows];
       response.message = "List of posts from friends";
     } catch (err) {
-      console.error("Database error: GET91603", err);
+      console.error("Database error: [GetPosts91638]", err);
       response.message = `Database error [GetPosts91638]: ${err}`;
     }
     response.success = String(status).search("2") === 0;

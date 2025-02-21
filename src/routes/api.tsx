@@ -1,14 +1,15 @@
 import { Hono } from "hono";
-import type { Context } from "hono";
-
 import { setSignedCookie } from 'hono/cookie';
 import { sign } from 'hono/jwt';
+
+import type { Context } from "hono";
 
 import users from "./users.jsx";
 import posts from "./posts.jsx"
 import comments from "./comments.jsx";
 import friends from "./friends.jsx";
 import likes from "./likes.jsx";
+import auth from "./auth.jsx";
 import { Docs } from "../static/docs.jsx";
 
 const api = new Hono();
@@ -20,6 +21,7 @@ api.route("/posts/:postId/comments", comments);
 api.route("/posts/:postId/likes", likes);
 api.route("/posts/:postId/comments/:commentId/likes", likes);
 api.route('/friends', friends);
+api.route("/auth", auth);
 
 // Delete below after authentication (TOTP) gets implemented
 // Couple routes for getting a legit user cookie
