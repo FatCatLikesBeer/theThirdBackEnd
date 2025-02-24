@@ -25,7 +25,6 @@ const time = 3;
  * and token, else only JSON
  */
 const loginOrSignup = async (c: Context) => {
-  const now = Date.now();
   const { TOTP_SECRET } = env<{ TOTP_SECRET: string }>(c);
   let status: ContentfulStatusCode = 500;
   const email = c.req.query("email") || "";
@@ -118,7 +117,7 @@ const loginOrSignup = async (c: Context) => {
         }
 
         // if totp is expired
-        if (Number(valid_until) <= now) {
+        if (Number(valid_until) <= Date.now()) {
           status = 500;
           throw new Error("Bad Token: Error: [GetAuth00003]");
         }
@@ -130,7 +129,7 @@ const loginOrSignup = async (c: Context) => {
         }
 
         // If both queries match and is not expired
-        if ((Number(valid_until) >= now) && (Number(otp) === Number(totpValue)) && (String(queriedEmail) === String(email))) {
+        if ((Number(valid_until) >= Date.now()) && (Number(otp) === Number(totpValue)) && (String(queriedEmail) === String(email))) {
           await signedCookieGenerator(c, String(uuid));
           status = 200;
           response.message = "Logged in";
@@ -149,9 +148,16 @@ const loginOrSignup = async (c: Context) => {
   return c.json(response, status);
 }
 
+/**
+ * signUpRegistration
+ * @argument {Context} c - Hono Context Object
+ * @description - Takes submitted email attempts to sign up
+ * a new user with that email. Validates and make sure no
+ * collisions exist with pre-registered users
+ */
 const signUpRegistration = async (c: Context) => {
   const { TOTP_SECRET } = env<{ TOTP_SECRET: string }>(c);
-  const email = c.req.query("email") as string;
+  const email = String(c.req.query("email"));
   let status: ContentfulStatusCode = 500;
   const response: APIResponse = {
     success: String(status).search("2") === 0,
@@ -168,17 +174,17 @@ const signUpRegistration = async (c: Context) => {
 
     // Check if email is in use
     const emailInUse = await emailInUseTransaction.execute({
-      sql: "SELECT email, uuid FROM users WHERE email = ?;",
+      sql: "SELECT email FROM users WHERE email = ?;",
       args: [email],
     });
     if (emailInUse.rows.length != 0) { throw new Error("Email invalid: [PostSignUp00002]") }
 
-    // Add email to unvalidated_users table
+    // Add email to unverified_users table
     response.message = "Unexpected Database Error: [PostSignUp00003]";
     const { otp, expires } = TOTP.generate(TOTP_SECRET, { period: (60 * time) });
     const createUnverifiedUser = await createUnverifiedUserTransaction.execute({
       sql: "INSERT INTO unverified_users (email, otp, valid_until) VALUES (?, ?, ?);",
-      args: [email, otp, expires],
+      args: [email, String(otp), expires],
     });
     if (createUnverifiedUser.rowsAffected < 1) { throw new Error("Unexpected Database Error: [PostSignUp00004]") }
 
@@ -193,6 +199,79 @@ const signUpRegistration = async (c: Context) => {
   } finally {
     emailInUseTransaction.close();
     createUnverifiedUserTransaction.close();
+  }
+
+  response.success = String(status).search("2") === 0;
+  return c.json(response, status);
+}
+
+/**
+ * signUpConfirmation
+ * @argument {Context} c - Hono Context Object
+ * @description Confirms email and creates user
+ */
+const signUpConfirmation = async (c: Context) => {
+  function errorSignature(increment: number): string {
+    return `[GetSignUp0000${increment}]`;
+  }
+  const email = String(c.req.query("email"));
+  const totpValue: string | undefined = c.req.query("totp");
+  let status: ContentfulStatusCode = 500;
+  const response: APIResponse = {
+    success: String(status).search("2") === 0,
+    path: `${c.req.path}`,
+    message: `Unexpected Error: ${errorSignature(1)}`,
+  }
+
+  const emailValidationAttempt = emailSchema.safeParse(email);
+  const totpValidationAttempt = totpSchema.safeParse(totpValue);
+  const userRegistrationTransaction = await turso.transaction();
+
+  try {
+    status = 400;
+    // Validate user inputs
+    if (!emailValidationAttempt.success) { throw new Error(`Email invalid: ${errorSignature(2)}`) }
+    if (!totpValidationAttempt.success) { throw new Error(`Invalid token: ${errorSignature(3)}`) }
+
+    // Email is not already in use
+    const emailCollision = await turso.execute({
+      sql: "SELECT email FROM users WHERE email = ?;",
+      args: [email],
+    });
+    if (emailCollision.rows.length != 0) { throw new Error(`Email invalid: ${errorSignature(4)}`) }
+
+    // Email and totp are on a single database row
+    const totpTableQuery = await turso.execute({
+      sql: "SELECT valid_until FROM unverified_users WHERE email = ? AND otp = ? ORDER BY valid_until DESC LIMIT 1;",
+      args: [email, String(totpValue)],
+    });
+    if (totpTableQuery.rows.length === 0) { throw new Error(`Email or Token invalid: ${errorSignature(5)}`) }
+
+    // Totp is not expired
+    if (Number(totpTableQuery.rows[0].valid_until) <= Number(Date.now())) { throw new Error(`Token expired: ${errorSignature(6)}`) }
+
+    // Create user
+    const randomlyGeneratedHandle = `TotallyNotABot-${Math.floor(Math.random() * 1000000)}`;
+    const userRegistration = await userRegistrationTransaction.execute({
+      sql: `INSERT INTO users (email, handle, password)
+        VALUES (?, ?, ?)
+        RETURNING uuid, email, handle, display_name, avatar, bio, about, location, created_at;
+      `,
+      args: [email, randomlyGeneratedHandle, "column not used 😱"],
+    });
+    if (userRegistration.rowsAffected === 0) { throw new Error(`Database Issue: ${errorSignature(7)}`) }
+
+    // Create cookie
+    await signedCookieGenerator(c, String(userRegistration.rows[0].uuid));
+
+    status = 200;
+    response.data = { ...userRegistration.rows[0] }
+    response.message = "SignUp Successful! Welcome 🙂";
+    await userRegistrationTransaction.commit();
+  } catch (err) {
+    response.message = String(err);
+  } finally {
+    userRegistrationTransaction.close();
   }
 
   response.success = String(status).search("2") === 0;
@@ -238,6 +317,6 @@ async function signedCookieGenerator(c: Context, uuid: string) {
   await setSignedCookie(c, 'jwt', token, COOKIE_SECRET);
 }
 
-const authController = { loginOrSignup, logout, signUpRegistration }
+const authController = { loginOrSignup, logout, signUpRegistration, signUpConfirmation }
 
 export default authController;
