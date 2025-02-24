@@ -1,4 +1,3 @@
-import mailer from '../library/mailer.js';
 import { z } from 'zod';
 
 import type { Context } from "hono";
@@ -7,75 +6,81 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { turso } from "../library/dev_turso.js";
 
 async function createUser(c: Context) {
-  let status: ContentfulStatusCode = 400;
+  //   let status: ContentfulStatusCode = 400;
+  //   const response: APIResponse = {
+  //     success: false,
+  //     path: `${c.req.path}`,
+  //     message: "Error, bad request",
+  //   }
+  //   const requestQuiries = c.req.query();
+  //
+  //   // Verify requred fields
+  //   try {
+  //     if (requestQuiries.email == "") { throw new Error("Email required") }
+  //     if (requestQuiries.password == "") { throw new Error("Password requred") }
+  //     if (requestQuiries.handle == "") { throw new Error("Handle required") }
+  //     if (requestQuiries.handle.length < 4) { throw new Error("Handle too short") }
+  //     if (requestQuiries.password.length < 8) { throw new Error("Password too short") }
+  //   } catch (err) {
+  //     response.message = `${err}`;
+  //     return c.json(response, status);
+  //   }
+  //
+  //   try {
+  //     // Validate email
+  //     const emailSchema = z.string().email();
+  //     const validationAttempt = emailSchema.safeParse(requestQuiries.email);
+  //     if (!validationAttempt.success) { throw new Error("Email not valid or already in use") }
+  //
+  //     // Is email in use
+  //     const emailQuery = await turso.execute({
+  //       sql: "SELECT COUNT(*) FROM users WHERE email = ?",
+  //       args: [requestQuiries.email],
+  //     });
+  //     if (0 != (Object.values(emailQuery.rows[0])[0])) { throw new Error("Email not valid or already in use") }
+  //
+  //     // Is handle in use
+  //     const handleQuery = await turso.execute({
+  //       sql: "SELECT COUNT(*) FROM users WHERE handle = ?",
+  //       args: [requestQuiries.handle],
+  //     });
+  //     if (0 != (Object.values(handleQuery.rows[0])[0])) { throw new Error("Handle already taken") }
+  //   } catch (err) {
+  //     response.message = `${err}`;
+  //     return c.json(response, status);
+  //   }
+  //
+  //   // Insert to database
+  //   const columns = ["email", "handle", "display_name", "password", "about", "bio", "location"];
+  //   const sqlQuery = ` INSERT INTO users (${columns.join(", ")}) VALUES (?, ?, ?, ?, ?, ?, ?);`;
+  //   const sqlArgs = columns.map((elem) => { return requestQuiries[elem] != undefined ? requestQuiries[elem] : null });
+  //
+  //   const transaction = await turso.transaction();
+  //   try {
+  //     await transaction.execute({
+  //       sql: sqlQuery,
+  //       args: sqlArgs,
+  //     });
+  //     await transaction.commit();
+  //
+  //     status = 200;
+  //     response.success = true;
+  //     response.data = sqlArgs;
+  //     response.message = `User created: ${requestQuiries.handle}`;
+  //
+  //   } catch (err) {
+  //     console.log("squery", sqlQuery);
+  //     console.log("args", sqlArgs);
+  //     response.message = `${err}`;
+  //     return c.json(response, status);
+  //   } finally {
+  //     transaction.close();
+  //   }
+  const status: ContentfulStatusCode = 410;
   const response: APIResponse = {
     success: false,
-    path: `${c.req.path}`,
-    message: "Error, bad request",
-  }
-  const requestQuiries = c.req.query();
-
-  // Verify requred fields
-  try {
-    if (requestQuiries.email == "") { throw new Error("Email required") }
-    if (requestQuiries.password == "") { throw new Error("Password requred") }
-    if (requestQuiries.handle == "") { throw new Error("Handle required") }
-    if (requestQuiries.handle.length < 4) { throw new Error("Handle too short") }
-    if (requestQuiries.password.length < 8) { throw new Error("Password too short") }
-  } catch (err) {
-    response.message = `${err}`;
-    return c.json(response, status);
-  }
-
-  try {
-    // Validate email
-    const emailSchema = z.string().email();
-    const validationAttempt = emailSchema.safeParse(requestQuiries.email);
-    if (!validationAttempt.success) { throw new Error("Email not valid or already in use") }
-
-    // Is email in use
-    const emailQuery = await turso.execute({
-      sql: "SELECT COUNT(*) FROM users WHERE email = ?",
-      args: [requestQuiries.email],
-    });
-    if (0 != (Object.values(emailQuery.rows[0])[0])) { throw new Error("Email not valid or already in use") }
-
-    // Is handle in use
-    const handleQuery = await turso.execute({
-      sql: "SELECT COUNT(*) FROM users WHERE handle = ?",
-      args: [requestQuiries.handle],
-    });
-    if (0 != (Object.values(handleQuery.rows[0])[0])) { throw new Error("Handle already taken") }
-  } catch (err) {
-    response.message = `${err}`;
-    return c.json(response, status);
-  }
-
-  // Insert to database
-  const columns = ["email", "handle", "display_name", "password", "about", "bio", "location"];
-  const sqlQuery = ` INSERT INTO users (${columns.join(", ")}) VALUES (?, ?, ?, ?, ?, ?, ?);`;
-  const sqlArgs = columns.map((elem) => { return requestQuiries[elem] != undefined ? requestQuiries[elem] : null });
-
-  const transaction = await turso.transaction();
-  try {
-    await transaction.execute({
-      sql: sqlQuery,
-      args: sqlArgs,
-    });
-    await transaction.commit();
-
-    status = 200;
-    response.success = true;
-    response.data = sqlArgs;
-    response.message = `User created: ${requestQuiries.handle}`;
-
-  } catch (err) {
-    console.log("squery", sqlQuery);
-    console.log("args", sqlArgs);
-    response.message = `${err}`;
-    return c.json(response, status);
-  } finally {
-    transaction.close();
+    path: c.req.path,
+    message: "This endpoint is not in use. Please use '/api/auth' instead."
   }
 
   return c.json(response, status);

@@ -9,6 +9,7 @@ import mailer from "../library/mailer.js";
 
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { Context } from "hono";
+import type { Client } from "@libsql/client";
 
 const emailSchema = z.string().email();
 const totpSchema = z.string().length(6);
@@ -228,6 +229,7 @@ const signUpConfirmation = async (c: Context) => {
   const userRegistrationTransaction = await turso.transaction();
 
   try {
+    // Any errors in this block are client errors
     status = 400;
     // Validate user inputs
     if (!emailValidationAttempt.success) { throw new Error(`Email invalid: ${errorSignature(2)}`) }
@@ -261,7 +263,7 @@ const signUpConfirmation = async (c: Context) => {
     });
     if (userRegistration.rowsAffected === 0) { throw new Error(`Database Issue: ${errorSignature(7)}`) }
 
-    // Create cookie
+    // Create tokenized cookie
     await signedCookieGenerator(c, String(userRegistration.rows[0].uuid));
 
     status = 200;
@@ -278,6 +280,10 @@ const signUpConfirmation = async (c: Context) => {
   return c.json(response, status);
 }
 
+/**
+ * logout
+ * @description - deletes cookie
+ */
 const logout = async (c: Context) => {
   let status: ContentfulStatusCode = 400;
   const response: APIResponse = {
@@ -317,6 +323,23 @@ async function signedCookieGenerator(c: Context, uuid: string) {
   await setSignedCookie(c, 'jwt', token, COOKIE_SECRET);
 }
 
-const authController = { loginOrSignup, logout, signUpRegistration, signUpConfirmation }
+// // Will fix one day
+// async function pruner(turso: Client, destination: string) {
+//   const transaction = await turso.transaction();
+//   try {
+//     const sql = `DELETE FROM ? WHERE valid_until < ?;`;
+//     const threeDaysAgo = (Date.now() - (1000 * 60 * 60 * 24 * 3));
+//     await transaction.execute({
+//       sql: sql,
+//       args: [destination, threeDaysAgo],
+//     });
+//     await transaction.commit();
+//   } catch (err) {
+//     console.error(err);
+//   } finally {
+//     transaction.close();
+//   }
+// }
 
+const authController = { loginOrSignup, logout, signUpRegistration, signUpConfirmation }
 export default authController;

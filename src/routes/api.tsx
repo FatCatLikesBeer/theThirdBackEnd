@@ -23,41 +23,41 @@ api.route("/posts/:postId/comments/:commentId/likes", likes);
 api.route('/friends', friends);
 api.route("/auth", auth);
 
-// Delete below after authentication (TOTP) gets implemented
-// Couple routes for getting a legit user cookie
-import * as dotenv from 'dotenv';
-
-dotenv.config();
-
-const jwtSecret = String(process.env.JWT_SECRET);
-const cookieSecret = String(process.env.COOKIE_SECRET);
-
-api.get('/get-good-cookie', async (c: Context) => {
-  const payload = {
-    user: "36d9cb69f79e158d31396a7b973ba7e4",                 // user 3 UUID
-    exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 5),  // 5 days
-    nbf: Math.floor(Date.now() / 1000) - 300,
-    iat: Math.floor(Date.now() / 1000),
-  }
-
-  const token = await sign(payload, jwtSecret);
-  await setSignedCookie(c, 'jwt', token, cookieSecret);
-
-  return c.text("You should have recieved a cookie whos key is 'jwt'");
-});
-
-api.get('/get-bad-cookie', async (c: Context) => {
-  const payload = {
-    user: "36d9cb69f79e158d31396a7b973ba7e4",                 // user 3 UUID
-    exp: Math.floor(Date.now() / 1000) - (60 * 60 * 24 * 5),  // 5 days ago
-    nbf: Math.floor(Date.now() / 1000) - 300,
-    iat: Math.floor(Date.now() / 1000),
-  }
-
-  const token = await sign(payload, jwtSecret);
-  await setSignedCookie(c, 'jwt', token, cookieSecret);
-
-  return c.text("You should have recieved a cookie whos key is 'jwt'");
-});
+// // Delete below after authentication (TOTP) gets implemented
+// // Couple routes for getting a legit user cookie
+// import * as dotenv from 'dotenv';
+//
+// dotenv.config();
+//
+// const jwtSecret = String(process.env.JWT_SECRET);
+// const cookieSecret = String(process.env.COOKIE_SECRET);
+//
+// api.get('/get-good-cookie', async (c: Context) => {
+//   const payload = {
+//     user: "36d9cb69f79e158d31396a7b973ba7e4",                 // user 3 UUID
+//     exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 5),  // 5 days
+//     nbf: Math.floor(Date.now() / 1000) - 300,
+//     iat: Math.floor(Date.now() / 1000),
+//   }
+//
+//   const token = await sign(payload, jwtSecret);
+//   await setSignedCookie(c, 'jwt', token, cookieSecret);
+//
+//   return c.text("You should have recieved a cookie whos key is 'jwt'");
+// });
+//
+// api.get('/get-bad-cookie', async (c: Context) => {
+//   const payload = {
+//     user: "36d9cb69f79e158d31396a7b973ba7e4",                 // user 3 UUID
+//     exp: Math.floor(Date.now() / 1000) - (60 * 60 * 24 * 5),  // 5 days ago
+//     nbf: Math.floor(Date.now() / 1000) - 300,
+//     iat: Math.floor(Date.now() / 1000),
+//   }
+//
+//   const token = await sign(payload, jwtSecret);
+//   await setSignedCookie(c, 'jwt', token, cookieSecret);
+//
+//   return c.text("You should have recieved a cookie whos key is 'jwt'");
+// });
 
 export default api;

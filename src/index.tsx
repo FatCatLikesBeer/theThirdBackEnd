@@ -33,7 +33,7 @@ serve({
   port,
 });
 
-// TODO: signup flow
-// TODO: TOTP table needs to be pruned
+// DONE: Disable users POST endpoint
 // TODO: Create avatar uploading stuff (this might be relegated to the frontend)
 // TODO: Automate turso switching URL when going to prod
+// TODO: TOTP table needs to be pruned
