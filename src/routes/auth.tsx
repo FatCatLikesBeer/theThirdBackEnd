@@ -3,9 +3,9 @@ import authController from '../controllers/auth.js';
 
 const auth = new Hono();
 
-auth.get("/", authController.loginOrSignup);
+auth.get("/", authController.loginOrSignup);            // login
+auth.post("/", authController.signUpRegistration);      // signup registration
+auth.get("/confirm");                                   // signup confirmation
 auth.get("/logout", authController.logout);
-auth.post("/");
-auth.get("/confirm");
 
 export default auth;

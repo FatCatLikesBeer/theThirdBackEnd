@@ -1,6 +1,6 @@
 import { env } from "hono/adapter";
 import { turso } from "../library/dev_turso.js";
-import { string, z } from "zod";
+import { z } from "zod";
 import { TOTP } from "totp-generator";
 import { setSignedCookie, deleteCookie } from 'hono/cookie';
 import { sign } from 'hono/jwt';
@@ -12,6 +12,7 @@ import type { Context } from "hono";
 
 const emailSchema = z.string().email();
 const totpSchema = z.string().length(6);
+const time = 3;
 
 /**
  * loginOrSignup function
@@ -25,7 +26,6 @@ const totpSchema = z.string().length(6);
  */
 const loginOrSignup = async (c: Context) => {
   const now = Date.now();
-  const time = 3;
   const { TOTP_SECRET } = env<{ TOTP_SECRET: string }>(c);
   let status: ContentfulStatusCode = 500;
   const email = c.req.query("email") || "";
@@ -149,6 +149,56 @@ const loginOrSignup = async (c: Context) => {
   return c.json(response, status);
 }
 
+const signUpRegistration = async (c: Context) => {
+  const { TOTP_SECRET } = env<{ TOTP_SECRET: string }>(c);
+  const email = c.req.query("email") as string;
+  let status: ContentfulStatusCode = 500;
+  const response: APIResponse = {
+    success: String(status).search("2") === 0,
+    path: `${c.req.path}`,
+    message: "Unexpected Error: [PostSignUp00001]",
+  }
+
+  const emailValidationAttempt = emailSchema.safeParse(email);
+  const emailInUseTransaction = await turso.transaction();
+  const createUnverifiedUserTransaction = await turso.transaction();
+  try {
+    // Check if email is valid
+    if (!emailValidationAttempt.success) { throw new Error("Email invalid: [PostSignUp00001]") }
+
+    // Check if email is in use
+    const emailInUse = await emailInUseTransaction.execute({
+      sql: "SELECT email, uuid FROM users WHERE email = ?;",
+      args: [email],
+    });
+    if (emailInUse.rows.length != 0) { throw new Error("Email invalid: [PostSignUp00002]") }
+
+    // Add email to unvalidated_users table
+    response.message = "Unexpected Database Error: [PostSignUp00003]";
+    const { otp, expires } = TOTP.generate(TOTP_SECRET, { period: (60 * time) });
+    const createUnverifiedUser = await createUnverifiedUserTransaction.execute({
+      sql: "INSERT INTO unverified_users (email, otp, valid_until) VALUES (?, ?, ?);",
+      args: [email, otp, expires],
+    });
+    if (createUnverifiedUser.rowsAffected < 1) { throw new Error("Unexpected Database Error: [PostSignUp00004]") }
+
+    // Commit changes and send email
+    await createUnverifiedUserTransaction.commit();
+    await mailer({ c, recipiant: email, generatedTotp: otp, time, });
+
+    response.message = "Check email for verification token";
+    status = 200;
+  } catch (err) {
+    response.message = `${err}`;
+  } finally {
+    emailInUseTransaction.close();
+    createUnverifiedUserTransaction.close();
+  }
+
+  response.success = String(status).search("2") === 0;
+  return c.json(response, status);
+}
+
 const logout = async (c: Context) => {
   let status: ContentfulStatusCode = 400;
   const response: APIResponse = {
@@ -188,6 +238,6 @@ async function signedCookieGenerator(c: Context, uuid: string) {
   await setSignedCookie(c, 'jwt', token, COOKIE_SECRET);
 }
 
-const authController = { loginOrSignup, logout }
+const authController = { loginOrSignup, logout, signUpRegistration }
 
 export default authController;

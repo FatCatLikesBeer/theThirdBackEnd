@@ -33,9 +33,7 @@ serve({
   port,
 });
 
-// TODO: Setup emial with custom domain,
-// TODO: Install node mailer & TOTP
-// TODO: Rewrite auth logic
+// TODO: signup flow
+// TODO: TOTP table needs to be pruned
 // TODO: Create avatar uploading stuff (this might be relegated to the frontend)
-// TODO: Implemented JWT & TOTP
 // TODO: Automate turso switching URL when going to prod
