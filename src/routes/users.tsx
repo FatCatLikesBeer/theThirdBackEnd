@@ -7,6 +7,7 @@ const users = new Hono();
 
 users.post('/', userControllers.createUser);                  // Disable this endpoint
 users.get('/', userControllers.readUserList);
+users.get('/self', authChecker, userControllers.self);
 users.get('/:id', userControllers.readUserDetail);
 users.put('/', authChecker, userControllers.updateUser);
 users.delete('/', authChecker, userControllers.deleteUser);

@@ -15,28 +15,45 @@ async function createPost(c: Context) {
 
   const postContent = c.req.queries('post');
 
-  const transaction = await turso.transaction();
+  const postTransaction = await turso.transaction();
+  const readTransaction = await turso.transaction();
   try {
-    const postAttempt = await transaction.execute({
+    await postTransaction.execute({
       sql: `INSERT INTO posts (user_id, content)
-      SELECT id, ? FROM users WHERE uuid = ?
-      RETURNING content, created_at, uuid;
-      `,
+        SELECT id, ?
+        FROM users WHERE uuid = ?;
+      ;`,
       args: [postContent, uuid],
     });
+    await postTransaction.commit();
+
+    const readAttempt = await readTransaction.execute({
+      sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar,
+        p.uuid as post_uuid, p.content, p.created_at
+      FROM users u
+      JOIN posts p ON p.user_id = u.id
+      WHERE u.uuid = ?
+      ORDER BY p.created_at DESC
+      LIMIT 1
+      ;`,
+      args: [uuid],
+    });
+    await readTransaction.commit();
 
     status = 200;
     response.success = true;
-    response.message = `Created post with uuid: ${postAttempt.rows[0].uuid}`;
-    response.data = { ...postAttempt.rows[0] }
+    response.message = `Created post with uuid: ${readAttempt.rows[0].uuid}`;
+    response.data = { ...readAttempt.rows[0] }
+    response.data.like_count = 0;
+    response.data.comment_count = 0;
 
-    await transaction.commit();
   } catch (err) {
     console.error("POST ERROR", err);
     status = 400;
     response.message = `${err}`;
   } finally {
-    transaction.close();
+    postTransaction.close();
+    readTransaction.close();
   }
 
   return c.json(response, status);

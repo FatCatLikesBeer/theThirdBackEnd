@@ -58,7 +58,6 @@ async function readLikes(c: Context) {
   let status: ContentfulStatusCode = 500;
   const postUUID = c.req.param('postId');
   const commentUUID = c.req.param('commentId') || null;
-  const userUUID = c.get("uuid") || null;
   const count = c.req.query('count') === undefined ? false : true;
   console.log("use count?", count);
   const response: APIResponse = {
@@ -116,15 +115,12 @@ async function readLikes(c: Context) {
 
 async function updateLike(c: Context) {
   let status: ContentfulStatusCode = 501;
-  const postUUID = c.req.param('postId');
-  const commentUUID = c.req.param('commentId') || null;
-  const userUUID = c.get("uuid");
   const response: APIResponse = {
-    success: String(status).search("2") === 0 ? true : false,
+    success: String(status).search("2") === 0,
     path: `${c.req.path}`,
     message: 'Endpoint not in use',
   }
-  response.success = String(status).search("2") === 0 ? true : false;
+  response.success = String(status).search("2") === 0;
   return c.json(response, status);
 }
 
@@ -134,7 +130,7 @@ async function deleteLike(c: Context) {
   const commentUUID = c.req.param('commentId') || null;
   const userUUID = c.get("uuid");
   const response: APIResponse = {
-    success: String(status).search("2") === 0 ? true : false,
+    success: String(status).search("2") === 0,
     path: `${c.req.path}`,
     message: 'POST not yet implemented',
   }
@@ -171,12 +167,10 @@ async function deleteLike(c: Context) {
     transaction.close();
   }
 
-  response.success = String(status).search("2") === 0 ? true : false;
+  response.success = String(status).search("2") === 0;
   return c.json(response, status);
 }
 
-const likeControllers = {
-  createLike, readLikes, updateLike, deleteLike,
-}
+const likeControllers = { createLike, readLikes, updateLike, deleteLike }
 
 export default likeControllers;

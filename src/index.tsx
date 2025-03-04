@@ -10,7 +10,8 @@ import api from "./routes/api.js";
 
 const app = new Hono();
 app.use(cors({
-  origin: "*",
+  origin: "http://localhost:5173",
+  credentials: true,
   allowHeaders: ["Authorization", "Content-Type"],
   exposeHeaders: ["Authorization"],
 }));
@@ -34,6 +35,9 @@ serve({
 });
 
 // DONE: Disable users POST endpoint
+// TODO: User details should not display email
+// TODO: Get rid of bio in users field
+// TODO: Move to Cloudflare R2
 // TODO: Create avatar uploading stuff (this might be relegated to the frontend)
 // TODO: Automate turso switching URL when going to prod
 // TODO: TOTP table needs to be pruned

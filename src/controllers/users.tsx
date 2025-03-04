@@ -6,76 +6,6 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { turso } from "../library/dev_turso.js";
 
 async function createUser(c: Context) {
-  //   let status: ContentfulStatusCode = 400;
-  //   const response: APIResponse = {
-  //     success: false,
-  //     path: `${c.req.path}`,
-  //     message: "Error, bad request",
-  //   }
-  //   const requestQuiries = c.req.query();
-  //
-  //   // Verify requred fields
-  //   try {
-  //     if (requestQuiries.email == "") { throw new Error("Email required") }
-  //     if (requestQuiries.password == "") { throw new Error("Password requred") }
-  //     if (requestQuiries.handle == "") { throw new Error("Handle required") }
-  //     if (requestQuiries.handle.length < 4) { throw new Error("Handle too short") }
-  //     if (requestQuiries.password.length < 8) { throw new Error("Password too short") }
-  //   } catch (err) {
-  //     response.message = `${err}`;
-  //     return c.json(response, status);
-  //   }
-  //
-  //   try {
-  //     // Validate email
-  //     const emailSchema = z.string().email();
-  //     const validationAttempt = emailSchema.safeParse(requestQuiries.email);
-  //     if (!validationAttempt.success) { throw new Error("Email not valid or already in use") }
-  //
-  //     // Is email in use
-  //     const emailQuery = await turso.execute({
-  //       sql: "SELECT COUNT(*) FROM users WHERE email = ?",
-  //       args: [requestQuiries.email],
-  //     });
-  //     if (0 != (Object.values(emailQuery.rows[0])[0])) { throw new Error("Email not valid or already in use") }
-  //
-  //     // Is handle in use
-  //     const handleQuery = await turso.execute({
-  //       sql: "SELECT COUNT(*) FROM users WHERE handle = ?",
-  //       args: [requestQuiries.handle],
-  //     });
-  //     if (0 != (Object.values(handleQuery.rows[0])[0])) { throw new Error("Handle already taken") }
-  //   } catch (err) {
-  //     response.message = `${err}`;
-  //     return c.json(response, status);
-  //   }
-  //
-  //   // Insert to database
-  //   const columns = ["email", "handle", "display_name", "password", "about", "bio", "location"];
-  //   const sqlQuery = ` INSERT INTO users (${columns.join(", ")}) VALUES (?, ?, ?, ?, ?, ?, ?);`;
-  //   const sqlArgs = columns.map((elem) => { return requestQuiries[elem] != undefined ? requestQuiries[elem] : null });
-  //
-  //   const transaction = await turso.transaction();
-  //   try {
-  //     await transaction.execute({
-  //       sql: sqlQuery,
-  //       args: sqlArgs,
-  //     });
-  //     await transaction.commit();
-  //
-  //     status = 200;
-  //     response.success = true;
-  //     response.data = sqlArgs;
-  //     response.message = `User created: ${requestQuiries.handle}`;
-  //
-  //   } catch (err) {
-  //     console.log("squery", sqlQuery);
-  //     console.log("args", sqlArgs);
-  //     response.message = `${err}`;
-  //     return c.json(response, status);
-  //   } finally {
-  //     transaction.close();
-  //   }
   const status: ContentfulStatusCode = 410;
   const response: APIResponse = {
     success: false,
@@ -90,7 +20,7 @@ async function readUserDetail(c: Context) {
   let status: ContentfulStatusCode = 400;
   const uuid = c.req.param("id");
   const queryUser = await turso.execute({
-    sql: "SELECT email, handle, display_name, avatar, bio, about, location, created_at FROM users WHERE uuid = ?",
+    sql: "SELECT handle, display_name, avatar, about, location, created_at FROM users WHERE uuid = ?",
     args: [uuid],
   });
 
@@ -110,7 +40,33 @@ async function readUserDetail(c: Context) {
     status = 200;
   }
   return c.json(response, status);
-};
+}
+
+async function self(c: Context) {
+  let status: ContentfulStatusCode = 400;
+  const uuid = c.get("uuid");
+  const queryUser = await turso.execute({
+    sql: "SELECT handle, display_name, avatar, email, about, location, created_at FROM users WHERE uuid = ?",
+    args: [uuid],
+  });
+
+  let response: APIResponse = {
+    success: false,
+    path: `${c.req.path}`,
+    message: `Could not find user ${uuid}`,
+  }
+
+  if (queryUser.rows.length != 0) {
+    response = {
+      success: true,
+      path: `${c.req.path}`,
+      message: `Details on user: ${uuid}`,
+      data: queryUser.rows[0],
+    }
+    status = 200;
+  }
+  return c.json(response, status);
+}
 
 async function readUserList(c: Context) {
   const query = c.req.query('q');
@@ -152,13 +108,10 @@ async function updateUser(c: Context) {
     message: "Failed to update user",
   }
 
-  // const token = await getSignedCookie(c, cookieSecret, "jwt");
-  // const tokenData = await verify(String(token), jwtSecret);
-  // const user = tokenData.user;
   const requestQuiries = Object.entries(c.req.query());
   if (requestQuiries.flat().includes("email")) {
     response.message = "Can not update email at this time";
-    return c.json(response);
+    return c.json(response, 400);
   }
   const user: string = c.get("uuid");
 
@@ -175,18 +128,23 @@ async function updateUser(c: Context) {
   });
   sqlQuery += `WHERE uuid = '${user}'`;
 
+  const transaction = await turso.transaction();
   try {
-    console.log("Full Query", sqlQuery);
-    console.log("sqlValues", sqlValues);
-    const query = await turso.execute({
+    const query = await transaction.execute({
       sql: sqlQuery,
       args: [...sqlValues],
     });
     console.log(query);
     response.success = true;
-    response.message = `${sqlQuery}`;
+    response.message = "Success";
+    response.data = {
+      result: sqlValues[0][0],
+    }
+    await transaction.commit();
   } catch (err) {
-    response.message = `Failed: ${err}`;
+    response.message = `Database Error [PutUser61733]: ${err}`;
+  } finally {
+    transaction.close();
   }
 
   return c.json(response);
@@ -227,6 +185,6 @@ async function deleteUser(c: Context) {
   return c.json(response, status);
 }
 
-const userControllers = { createUser, readUserList, readUserDetail, updateUser, deleteUser, }
+const userControllers = { createUser, readUserList, readUserDetail, updateUser, deleteUser, self }
 
 export default userControllers;

@@ -257,7 +257,7 @@ const signUpConfirmation = async (c: Context) => {
     const userRegistration = await userRegistrationTransaction.execute({
       sql: `INSERT INTO users (email, handle, password)
         VALUES (?, ?, ?)
-        RETURNING uuid, email, handle, display_name, avatar, bio, about, location, created_at;
+        RETURNING uuid;
       `,
       args: [email, randomlyGeneratedHandle, "column not used 😱"],
     });
@@ -322,24 +322,6 @@ async function signedCookieGenerator(c: Context, uuid: string) {
   const token = await sign(payload, JWT_SECRET);
   await setSignedCookie(c, 'jwt', token, COOKIE_SECRET);
 }
-
-// // Will fix one day
-// async function pruner(turso: Client, destination: string) {
-//   const transaction = await turso.transaction();
-//   try {
-//     const sql = `DELETE FROM ? WHERE valid_until < ?;`;
-//     const threeDaysAgo = (Date.now() - (1000 * 60 * 60 * 24 * 3));
-//     await transaction.execute({
-//       sql: sql,
-//       args: [destination, threeDaysAgo],
-//     });
-//     await transaction.commit();
-//   } catch (err) {
-//     console.error(err);
-//   } finally {
-//     transaction.close();
-//   }
-// }
 
 const authController = { loginOrSignup, logout, signUpRegistration, signUpConfirmation }
 export default authController;
