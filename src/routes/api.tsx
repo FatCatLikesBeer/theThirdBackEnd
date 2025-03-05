@@ -18,7 +18,7 @@ api.route("/posts", posts);
 api.route("/posts/:postId/comments", comments);
 api.route("/posts/:postId/likes", likes);
 api.route("/posts/:postId/comments/:commentId/likes", likes);
-api.route('/friends', friends);
+api.route("/friends", friends);
 api.route("/auth", auth);
 
 export default api;

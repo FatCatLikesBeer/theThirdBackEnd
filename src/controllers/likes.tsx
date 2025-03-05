@@ -132,7 +132,7 @@ async function deleteLike(c: Context) {
   const response: APIResponse = {
     success: String(status).search("2") === 0,
     path: `${c.req.path}`,
-    message: 'POST not yet implemented',
+    message: 'Unexpected Error: [DelLike92618]',
   }
 
   const sqlQuery = commentUUID === null

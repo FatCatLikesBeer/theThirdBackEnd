@@ -126,8 +126,8 @@ async function readPostDetail(c: Context) {
 // Else, return most recent posts
 async function readPostList(c: Context) {
   let status: ContentfulStatusCode = 400;
-  const user = c.req.query("user") || undefined;
-  const friends = c.req.query("friends");
+  const userQuery = c.req.query("user") || undefined;
+  const friendsQuery = c.req.query("friends");
   const userUUID = await retrieveUUID(c);
   const response: APIResponse = {
     success: String(status).search("2") === 0 ? true : false,
@@ -135,8 +135,8 @@ async function readPostList(c: Context) {
     message: 'Bad request',
   }
 
-  // Get posts from specific user
-  if (user?.length === 32) {
+  // Get list of posts from queried user
+  if (userQuery?.length === 32) {
     try {
       const userPosts = await turso.execute({
         sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
@@ -151,7 +151,7 @@ async function readPostList(c: Context) {
         ORDER BY p.created_at DESC
         LIMIT 20;
       `,
-        args: [user],
+        args: [userQuery],
       });
 
       response.data = [...userPosts.rows];
@@ -165,15 +165,15 @@ async function readPostList(c: Context) {
       response.success = String(status).search("2") === 0;
       return c.json(response, status);
     }
-  } else if (user) {
+  } else if (userQuery) {
     status = 500;
-    response.message = `Error: [GetPosts11212]: ${user} is not valid`;
+    response.message = `Error: [GetPosts11212]: ${userQuery} is not valid`;
     response.success = String(status).search("2") === 0;
     return c.json(response, status);
   }
 
   // Get posts from friends
-  if ((friends) && (userUUID)) {
+  if ((friendsQuery) && (userUUID)) {
     try {
       const friendsPosts = await turso.execute({
         sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
@@ -220,11 +220,26 @@ async function readPostList(c: Context) {
         LIMIT 20;
       `);
 
+      // TODO
+      // const returnLikePosts = userUUID
+      // ? await turso.execute({
+      //   sql: `
+      //     SELECT p.uuid
+      //     FROM posts p
+      //     JOIN likes l ON l.post_id = p.id
+      //     JOIN users u ON u.id = l.user_id
+      //     WHERE u.uuid = ?;
+      //     `,
+      //   args: [userUUID]
+      // })
+      // :
+      // null;
+
       response.message = `${queryPosts.rows.length} of the most recent post${queryPosts.rows.length === 1 ? "" : "s"}`;
       response.data = [...queryPosts.rows];
       status = 200;
     } else {
-      // search
+      // Get posts from searched content
       const querySearch = await turso.execute({
         sql: `
           SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,

@@ -34,10 +34,6 @@ serve({
   port,
 });
 
-// DONE: Disable users POST endpoint
-// TODO: User details should not display email
-// TODO: Get rid of bio in users field
-// TODO: Move to Cloudflare R2
+// TODO: When getting a post or query, should return if you've like or left a comment
 // TODO: Create avatar uploading stuff (this might be relegated to the frontend)
 // TODO: Automate turso switching URL when going to prod
-// TODO: TOTP table needs to be pruned

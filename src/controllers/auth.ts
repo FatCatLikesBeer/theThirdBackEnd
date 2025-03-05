@@ -4,12 +4,13 @@ import { z } from "zod";
 import { TOTP } from "totp-generator";
 import { setSignedCookie, deleteCookie } from 'hono/cookie';
 import { sign } from 'hono/jwt';
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 
 import mailer from "../library/mailer.js";
 
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { Context } from "hono";
-import type { Client } from "@libsql/client";
 
 const emailSchema = z.string().email();
 const totpSchema = z.string().length(6);
@@ -305,6 +306,49 @@ const logout = async (c: Context) => {
 }
 
 /**
+ * getToken
+ * @description - Returns a signed URL for AWS/R2 bucket uploads
+ */
+const getSignedBucketURL = async (c: Context) => {
+  let status: ContentfulStatusCode = 500;
+  const response: APIResponse = {
+    success: String(status).search("2") === 0,
+    path: `${c.req.path}`,
+    message: "Unexpected Error: [GetToken00001]",
+  }
+  const { R2_API_ENDPOINT } = env<{ R2_API_ENDPOINT: string }>(c);
+  const { R2_ACCESS_KEY } = env<{ R2_ACCESS_KEY: string }>(c);
+  const { R2_SECRET_KEY } = env<{ R2_SECRET_KEY: string }>(c);
+  const userUUID = c.get("uuid");
+
+  try {
+    const S3 = new S3Client({
+      region: "auto",
+      endpoint: R2_API_ENDPOINT,
+      credentials: {
+        accessKeyId: R2_ACCESS_KEY,
+        secretAccessKey: R2_SECRET_KEY,
+      }
+    });
+
+    const preSignedURL = await getSignedUrl(
+      S3,
+      new PutObjectCommand({ Bucket: "third-app-bucket", Key: userUUID }),
+      { expiresIn: 3600 },
+    );
+
+    status = 200;
+    response.message = "Here's your presigned URL";
+    response.data = preSignedURL;
+  } catch (err) {
+    response.message = "Contractor Error: [GetToken00002]";
+  }
+
+  response.success = String(status).search("2") === 0;
+  return c.json(response, status);
+}
+
+/**
   * signedCookieGenerator
   * @argument {Context} c - Hono Context Object
   * @argument {string} uuid - user uuid
@@ -323,5 +367,5 @@ async function signedCookieGenerator(c: Context, uuid: string) {
   await setSignedCookie(c, 'jwt', token, COOKIE_SECRET);
 }
 
-const authController = { loginOrSignup, logout, signUpRegistration, signUpConfirmation }
+const authController = { loginOrSignup, logout, signUpRegistration, signUpConfirmation, getSignedBucketURL }
 export default authController;
