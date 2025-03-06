@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import { env } from "hono/adapter";
+import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
@@ -115,6 +116,41 @@ async function updateUser(c: Context) {
   }
   const user: string = c.get("uuid");
 
+  const avatarValue = c.req.query("avatar");
+  if ("default" === avatarValue) {
+    const { R2_API_ENDPOINT } = env<{ R2_API_ENDPOINT: string }>(c);
+    const { R2_ACCESS_KEY } = env<{ R2_ACCESS_KEY: string }>(c);
+    const { R2_SECRET_KEY } = env<{ R2_SECRET_KEY: string }>(c);
+    const userUUID = c.get("uuid");
+
+    const deleteAvatar = await turso.transaction();
+    try {
+      await deleteAvatar.execute({
+        sql: "UPDATE users SET avatar = NULL WHERE uuid = ?",
+        args: [userUUID],
+      });
+
+      const S3 = new S3Client({
+        region: "auto",
+        endpoint: R2_API_ENDPOINT,
+        credentials: {
+          accessKeyId: R2_ACCESS_KEY,
+          secretAccessKey: R2_SECRET_KEY,
+        }
+      });
+      await S3.send(new DeleteObjectCommand({ Bucket: "third-app-bucket", Key: `${userUUID}.jpg` }));
+
+      await deleteAvatar.commit();
+    } catch (err) {
+      response.message = `Database or Vendor Error: ${err}`;
+    } finally {
+      deleteAvatar.close();
+    }
+    response.message = "Avatar: Default";
+    return c.json(response, 200);
+  }
+
+  // Build query
   let sqlQuery = "UPDATE users SET ";
   let sqlValues: any[] = [];
   requestQuiries.forEach((elem, i, arr) => {
@@ -128,6 +164,7 @@ async function updateUser(c: Context) {
   });
   sqlQuery += `WHERE uuid = '${user}'`;
 
+  // Send query
   const transaction = await turso.transaction();
   try {
     const query = await transaction.execute({

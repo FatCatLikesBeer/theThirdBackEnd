@@ -5,7 +5,7 @@ import { TOTP } from "totp-generator";
 import { setSignedCookie, deleteCookie } from 'hono/cookie';
 import { sign } from 'hono/jwt';
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
 
 import mailer from "../library/mailer.js";
 
@@ -321,6 +321,7 @@ const getSignedBucketURL = async (c: Context) => {
   const { R2_SECRET_KEY } = env<{ R2_SECRET_KEY: string }>(c);
   const userUUID = c.get("uuid");
 
+  const updateDB = await turso.transaction();
   try {
     const S3 = new S3Client({
       region: "auto",
@@ -333,15 +334,29 @@ const getSignedBucketURL = async (c: Context) => {
 
     const preSignedURL = await getSignedUrl(
       S3,
-      new PutObjectCommand({ Bucket: "third-app-bucket", Key: userUUID }),
+      new PutObjectCommand({ Bucket: "third-app-bucket", Key: `${userUUID}.jpg` }),
       { expiresIn: 3600 },
     );
+
+    await S3.send(new CopyObjectCommand({
+      Bucket: "third-app-bucket",
+      CopySource: "third-app-bucket/avatar.jpg",
+      Key: `${userUUID}.jpg`
+    }));
+
+    await updateDB.execute({
+      sql: "UPDATE users SET avatar = ? WHERE uuid = ?",
+      args: [userUUID, userUUID],
+    });
 
     status = 200;
     response.message = "Here's your presigned URL";
     response.data = preSignedURL;
+    await updateDB.commit();
   } catch (err) {
     response.message = "Contractor Error: [GetToken00002]";
+  } finally {
+    updateDB.close();
   }
 
   response.success = String(status).search("2") === 0;
