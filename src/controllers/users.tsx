@@ -19,27 +19,44 @@ async function createUser(c: Context) {
 
 async function readUserDetail(c: Context) {
   let status: ContentfulStatusCode = 400;
-  const uuid = c.req.param("id");
-  const queryUser = await turso.execute({
-    sql: "SELECT handle, display_name, avatar, about, location, created_at FROM users WHERE uuid = ?",
-    args: [uuid],
-  });
-
   let response: APIResponse = {
     success: false,
     path: `${c.req.path}`,
-    message: `Could not find user ${uuid}`,
+    message: "Unexpected Error [GetUsr00001]",
   }
 
-  if (queryUser.rows.length != 0) {
-    response = {
-      success: true,
-      path: `${c.req.path}`,
-      message: `Details on user: ${uuid}`,
-      data: queryUser.rows[0],
+  const uuid = c.req.param("id");
+
+  try {
+    const queryUserInfo = await turso.execute({
+      sql: "SELECT handle, display_name, avatar, about, location, created_at FROM users WHERE uuid = ?",
+      args: [uuid],
+    });
+
+    const queryPostLikeFriends = await turso.execute({
+      sql: ` SELECT
+      (SELECT COUNT(*) FROM posts WHERE user_id = (SELECT id FROM users WHERE uuid = ? )) AS post_count,
+      (SELECT COUNT(*) FROM likes WHERE user_id = (SELECT id FROM users WHERE uuid = ? )) AS like_count,
+      (SELECT COUNT(*) FROM friends WHERE user_id = (SELECT id FROM users WHERE uuid = ? ) OR
+          friend_id = (SELECT id FROM users WHERE uuid = ?)) AS friend_count;
+      `,
+      args: [uuid, uuid, uuid, uuid],
+    });
+
+    const userInfo = {
+      ...queryUserInfo.rows[0],
+      ...queryPostLikeFriends.rows[0],
     }
+
     status = 200;
+    response.data = userInfo;
+    response.message = `Details for User ${uuid}`;
+  } catch (err: any) {
+    status = 500;
+    response.message = `Database Error [GetUsr00011]: ${err.message}`;
   }
+
+  response.success = String(status).search("2") === 0;
   return c.json(response, status);
 }
 

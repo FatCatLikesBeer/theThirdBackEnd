@@ -6,7 +6,7 @@ import { turso } from "../library/dev_turso.js";
 async function createFriend(c: Context) {
   let status: ContentfulStatusCode = 500;
   const response: APIResponse = {
-    success: String(status).search("2") === 0 ? true : false,
+    success: String(status).search("2") === 0,
     path: `${c.req.path}`,
     message: 'Server Error',
   }
@@ -37,14 +37,14 @@ async function createFriend(c: Context) {
     transaction.close();
   }
 
-  response.success = String(status).search("2") === 0 ? true : false;
+  response.success = String(status).search("2") === 0;
   return c.json(response, status);
 }
 
 async function readFriendDetail(c: Context) {
   let status: ContentfulStatusCode = 500;
   const response: APIResponse = {
-    success: String(status).search("2") === 0 ? true : false,
+    success: String(status).search("2") === 0,
     path: `${c.req.path}`,
     message: 'Server Error',
   }
@@ -72,36 +72,36 @@ async function readFriendDetail(c: Context) {
     response.message = `${err}`;
   }
 
-  response.success = String(status).search("2") === 0 ? true : false;
+  response.success = String(status).search("2") === 0;
   return c.json(response, status);
 };
 
 async function readFriendList(c: Context) {
   let status: ContentfulStatusCode = 501;
   const response: APIResponse = {
-    success: String(status).search("2") === 0 ? true : false,
+    success: String(status).search("2") === 0,
     path: `${c.req.path}`,
     message: 'Endpoint requires a parameter',
   }
-  response.success = String(status).search("2") === 0 ? true : false;
+  response.success = String(status).search("2") === 0;
   return c.json(response, status);
 }
 
 async function updateFriend(c: Context) {
   let status: ContentfulStatusCode = 501;
   const response: APIResponse = {
-    success: String(status).search("2") === 0 ? true : false,
+    success: String(status).search("2") === 0,
     path: `${c.req.path}`,
     message: 'Endpoint not in use',
   }
-  response.success = String(status).search("2") === 0 ? true : false;
+  response.success = String(status).search("2") === 0;
   return c.json(response, status);
 }
 
 async function deleteFriend(c: Context) {
   let status: ContentfulStatusCode = 500;
   const response: APIResponse = {
-    success: String(status).search("2") === 0 ? true : false,
+    success: String(status).search("2") === 0,
     path: `${c.req.path}`,
     message: 'Server Error',
   }
@@ -131,7 +131,7 @@ async function deleteFriend(c: Context) {
     transaction.close();
   }
 
-  response.success = String(status).search("2") === 0 ? true : false;
+  response.success = String(status).search("2") === 0;
   return c.json(response, status);
 }
 
