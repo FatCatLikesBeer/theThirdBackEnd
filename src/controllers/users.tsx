@@ -29,7 +29,9 @@ async function readUserDetail(c: Context) {
 
   try {
     const queryUserInfo = await turso.execute({
-      sql: "SELECT handle, display_name, avatar, about, location, created_at FROM users WHERE uuid = ?",
+      sql: `SELECT handle, display_name, avatar, about, location,
+          created_at, twitter, instagram, blue_sky, url_1, url_2
+        FROM users WHERE uuid = ?`,
       args: [uuid],
     });
 
@@ -64,7 +66,9 @@ async function self(c: Context) {
   let status: ContentfulStatusCode = 400;
   const uuid = c.get("uuid");
   const queryUser = await turso.execute({
-    sql: "SELECT handle, display_name, avatar, email, about, location, created_at FROM users WHERE uuid = ?",
+    sql: `SELECT handle, display_name, avatar, email, about, location,
+      twitter, instagram, blue_sky, url_1, url_2
+      created_at FROM users WHERE uuid = ?`,
     args: [uuid],
   });
 
