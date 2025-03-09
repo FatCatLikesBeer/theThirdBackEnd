@@ -29,7 +29,7 @@ async function readUserDetail(c: Context) {
 
   try {
     const queryUserInfo = await turso.execute({
-      sql: `SELECT handle, display_name, avatar, about, location,
+      sql: `SELECT handle, avatar, about, location,
           created_at, twitter, instagram, blue_sky, url_1, url_2
         FROM users WHERE uuid = ?`,
       args: [uuid],
@@ -66,9 +66,9 @@ async function self(c: Context) {
   let status: ContentfulStatusCode = 400;
   const uuid = c.get("uuid");
   const queryUser = await turso.execute({
-    sql: `SELECT handle, display_name, avatar, email, about, location,
-      twitter, instagram, blue_sky, url_1, url_2
-      created_at FROM users WHERE uuid = ?`,
+    sql: `SELECT handle, avatar, email, about, location,
+      created_at, twitter, instagram, blue_sky, url_1, url_2
+      FROM users WHERE uuid = ?`,
     args: [uuid],
   });
 
@@ -100,7 +100,7 @@ async function readUserList(c: Context) {
   }
 
   if (query == undefined) {
-    const queryUsers = await turso.execute("SELECT uuid, handle, display_name, created_at, avatar FROM users");
+    const queryUsers = await turso.execute("SELECT uuid, handle, created_at, avatar FROM users");
     response = {
       success: true,
       path: `${c.req.path}`,
@@ -109,7 +109,7 @@ async function readUserList(c: Context) {
     }
   } else {
     const queryUsers = await turso.execute({
-      sql: "SELECT uuid, handle, display_name, created_at, avatar FROM users WHERE handle LIKE ?",
+      sql: "SELECT uuid, handle, created_at, avatar FROM users WHERE handle LIKE ?",
       args: [query],
     });
     response = {

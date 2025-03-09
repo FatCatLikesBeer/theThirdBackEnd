@@ -15,7 +15,7 @@ async function createFriend(c: Context) {
 
   const transaction = await turso.transaction();
   try {
-    const createFriend = await transaction.execute({
+    await transaction.execute({
       sql: `INSERT OR IGNORE INTO friends (user_id, friend_id)
       VALUES (
         (SELECT id FROM users WHERE uuid = ?),
@@ -25,9 +25,20 @@ async function createFriend(c: Context) {
       args: [userUUID, friendUUID],
     });
 
-    console.log(createFriend);
+    const friendData = await turso.execute({
+      sql: "SELECT handle, avatar FROM users WHERE uuid = ?",
+      args: [friendUUID],
+    });
+
+    const responseData = {
+      uuid: friendUUID,
+      handle: friendData.rows[0].handle,
+      avatar: friendData.rows[0].avatar,
+      created_at: Date.now(),
+    }
+
     status = 200;
-    response.data = [...createFriend.rows];
+    response.data = responseData;
     response.message = `${userUUID} added ${friendUUID} to their friends list`;
     await transaction.commit();
   } catch (err) {
@@ -52,7 +63,7 @@ async function readFriendDetail(c: Context) {
 
   try {
     const query = await turso.execute({
-      sql: `SELECT u2.uuid, u2.handle, u2.display_name, u2.email, u2.avatar, f.created_at
+      sql: `SELECT u2.uuid, u2.handle, u2.avatar, f.created_at
       FROM friends f
       JOIN users u1 ON u1.id = f.user_id
       JOIN users u2 ON u2.id = f.friend_id
