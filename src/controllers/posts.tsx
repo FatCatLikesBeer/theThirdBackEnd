@@ -135,6 +135,20 @@ async function readPostList(c: Context) {
     message: 'Bad request',
   }
 
+  // List of posts and comments liked by requesting user
+  const listOfContentLikedByUser = userUUID
+    ? await turso.execute({
+      sql: `SELECT p.uuid AS post_uuid, c.uuid AS comment_uuid
+        FROM likes l
+        LEFT JOIN comments c ON c.id = l.comment_id
+        LEFT JOIN posts p ON p.id = l.post_id
+        WHERE l.user_id = (SELECT id FROM users WHERE uuid = ?)
+      `,
+      args: [userUUID],
+    })
+    :
+    null;
+
   // Get list of posts from queried user
   if (userQuery?.length === 32) {
     try {
@@ -220,21 +234,6 @@ async function readPostList(c: Context) {
         LIMIT 20;
       `);
 
-      // TODO
-      // const returnLikePosts = userUUID
-      // ? await turso.execute({
-      //   sql: `
-      //     SELECT p.uuid
-      //     FROM posts p
-      //     JOIN likes l ON l.post_id = p.id
-      //     JOIN users u ON u.id = l.user_id
-      //     WHERE u.uuid = ?;
-      //     `,
-      //   args: [userUUID]
-      // })
-      // :
-      // null;
-
       response.message = `${queryPosts.rows.length} of the most recent post${queryPosts.rows.length === 1 ? "" : "s"}`;
       response.data = [...queryPosts.rows];
       status = 200;
@@ -262,6 +261,16 @@ async function readPostList(c: Context) {
     }
   } catch (err) {
     response.message = `${err}`;
+  }
+
+  // Inserts into result post_liked: boolean
+  if (response.data && listOfContentLikedByUser) {
+    response.data.forEach((dataElem: any, i: number) => {
+      response.data[i].post_liked = false;
+      listOfContentLikedByUser.rows.forEach((likeElem) => {
+        if (dataElem.post_uuid === likeElem.post_uuid) response.data[i].post_liked = true;
+      });
+    });
   }
 
   response.success = String(status).search("2") === 0;
