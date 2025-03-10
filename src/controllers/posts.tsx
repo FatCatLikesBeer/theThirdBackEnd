@@ -147,7 +147,7 @@ async function readPostList(c: Context) {
       args: [userUUID],
     })
     :
-    null;
+    { rows: [{ post_uuid: null }] }; // Returns a a thing that will always display flase
 
   // Get list of posts from queried user
   if (userQuery?.length === 32) {
@@ -172,7 +172,6 @@ async function readPostList(c: Context) {
       status = 200;
       response.message = `Query returned ${userPosts.rows.length} post${userPosts.rows.length === 1 ? "" : "s"}`;
       response.success = String(status).search("2") === 0;
-      return c.json(response, status);
     } catch (err) {
       status = 500;
       response.message = `Database error: [GetPosts61839]: ${err}`
@@ -183,11 +182,10 @@ async function readPostList(c: Context) {
     status = 500;
     response.message = `Error: [GetPosts11212]: ${userQuery} is not valid`;
     response.success = String(status).search("2") === 0;
-    return c.json(response, status);
   }
 
   // Get posts from friends
-  if ((friendsQuery) && (userUUID)) {
+  else if ((friendsQuery) && (userUUID)) {
     try {
       const friendsPosts = await turso.execute({
         sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
@@ -210,37 +208,36 @@ async function readPostList(c: Context) {
       response.data = [...friendsPosts.rows];
       response.message = "List of posts from friends";
     } catch (err) {
+      status = 500;
       console.error("Database error: [GetPosts91638]", err);
       response.message = `Database error [GetPosts91638]: ${err}`;
     }
     response.success = String(status).search("2") === 0;
-    return c.json(response, status);
-  }
+  } else {
+    try {
+      const searchQuery = c.req.query("search");
+      if (searchQuery === undefined) {
+        // most recent posts
+        const queryPosts = await turso.execute(`
+          SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
+          p.uuid AS post_uuid, p.content, p.created_at,
+          COUNT(c.post_id) AS comment_count, COUNT(l.post_id) as like_count
+          FROM posts p
+          JOIN users u ON p.user_id = u.id
+          LEFT JOIN likes l ON l.post_id = p.id
+          LEFT JOIN comments c ON c.post_id = p.id
+          GROUP BY p.id
+          ORDER BY p.created_at DESC
+          LIMIT 20;
+          `);
 
-  try {
-    const searchQuery = c.req.query("search");
-    if (searchQuery === undefined) {
-      // most recent posts
-      const queryPosts = await turso.execute(`
-        SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
-        p.uuid AS post_uuid, p.content, p.created_at,
-        COUNT(c.post_id) AS comment_count, COUNT(l.post_id) as like_count
-        FROM posts p
-        JOIN users u ON p.user_id = u.id
-        LEFT JOIN likes l ON l.post_id = p.id
-        LEFT JOIN comments c ON c.post_id = p.id
-        GROUP BY p.id
-        ORDER BY p.created_at DESC
-        LIMIT 20;
-      `);
-
-      response.message = `${queryPosts.rows.length} of the most recent post${queryPosts.rows.length === 1 ? "" : "s"}`;
-      response.data = [...queryPosts.rows];
-      status = 200;
-    } else {
-      // Get posts from searched content
-      const querySearch = await turso.execute({
-        sql: `
+        response.message = `${queryPosts.rows.length} of the most recent post${queryPosts.rows.length === 1 ? "" : "s"}`;
+        response.data = [...queryPosts.rows];
+        status = 200;
+      } else {
+        // Get posts from searched content
+        const querySearch = await turso.execute({
+          sql: `
           SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
           p.uuid AS post_uuid, p.content, p.created_at,
           COUNT(c.post_id) AS comment_likes, COUNT(l.post_id) as like_count
@@ -252,15 +249,17 @@ async function readPostList(c: Context) {
           GROUP BY p.id
           ORDER BY p.created_at DESC
           LIMIT 20;
-        `,
-        args: [`%${searchQuery}%`],
-      });
-      response.message = `Search query returned ${querySearch.rows.length} post${querySearch.rows.length === 1 ? "" : "s"}`;
-      response.data = [...querySearch.rows];
-      status = 200;
+          `,
+          args: [`%${searchQuery}%`],
+        });
+        response.message = `Search query returned ${querySearch.rows.length} post${querySearch.rows.length === 1 ? "" : "s"}`;
+        response.data = [...querySearch.rows];
+        status = 200;
+      }
+    } catch (err: any) {
+      status = 500;
+      response.message = `${err.message}`;
     }
-  } catch (err) {
-    response.message = `${err}`;
   }
 
   // Inserts into result post_liked: boolean
