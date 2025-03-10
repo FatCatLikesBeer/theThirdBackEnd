@@ -91,7 +91,7 @@ async function self(c: Context) {
 }
 
 async function readUserList(c: Context) {
-  const query = c.req.query('q');
+  const query = c.req.query('search');
 
   let response: APIResponse = {
     success: false,
@@ -110,7 +110,7 @@ async function readUserList(c: Context) {
   } else {
     const queryUsers = await turso.execute({
       sql: "SELECT uuid, handle, created_at, avatar FROM users WHERE handle LIKE ?",
-      args: [query],
+      args: [`%${query}%`],
     });
     response = {
       success: true,
