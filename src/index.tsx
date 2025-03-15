@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
+import { trimTrailingSlash } from "hono/trailing-slash";
 import { cors } from "hono/cors";
 
 import type { FC } from "hono/jsx";
@@ -15,10 +17,13 @@ app.use(cors({
   allowHeaders: ["Authorization", "Content-Type"],
   exposeHeaders: ["Authorization"],
 }));
+app.use(trimTrailingSlash());
 
 // SPA
-const Test: FC = () => <h1>Welcome to The Third</h1>;
-app.get("/", (c: Context) => c.html(<Test />));
+app.use("*", serveStatic({ root: "./public" }));
+
+{/* const Test: FC = () => <h1>Welcome to The Third</h1>; */ }
+{/* app.get("/", (c: Context) => c.html()); */ }
 
 // API endpoints
 app.route("/api", api);
@@ -34,6 +39,4 @@ serve({
   port,
 });
 
-// TODO: When getting a post or query, should return if you've like or left a comment
-// TODO: Create avatar uploading stuff (this might be relegated to the frontend)
 // TODO: Automate turso switching URL when going to prod

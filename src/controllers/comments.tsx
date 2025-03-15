@@ -23,19 +23,34 @@ async function createComment(c: Context) {
           (SELECT id FROM users WHERE uuid = ?),
           (SELECT id FROM posts WHERE uuid = ?),
           ?
-        );
+        )
+        RETURNING uuid ;
       `,
       args: [userUUID, postUUID, content],
     });
 
+    const userInfo = await turso.execute({
+      sql: "SELECT handle, avatar FROM users WHERE uuid = ?",
+      args: [userUUID],
+    })
+
     if (postComment.rowsAffected != 0) {
       status = 200;
       response.message = "Comment posted";
-      response.data = [...postComment.rows];
+      response.data = {
+        comment_uuid: postComment.rows[0].uuid,
+        content: content,
+        created_at: Date.now(),
+        user_uuid: userUUID,
+        handle: userInfo.rows[0].handle,
+        avatar: userInfo.rows[0].avatar,
+        likes: 0,
+        comment_liked: false,
+      }
       await transaction.commit();
     }
   } catch (err) {
-    response.message = `Database error: POST comment: ${err}`;
+    response.message = `Database error: [PostComm19669]: ${err}`;
   } finally {
     transaction.close();
   }
@@ -89,23 +104,25 @@ async function readCommentList(c: Context) {
     message: 'Server Error: GET comments',
   }
 
-  const listOfComments = await turso.execute({
-    sql: `SELECT u.handle, u.avatar, u.display_name, u.uuid as user_uuid,
-      c.uuid as comment_uuid, c.content, c.created_at
-      FROM comments c
-      JOIN users u ON c.user_id = u.id
-      WHERE c.post_id = (SELECT id FROM posts WHERE uuid = ?);
-    `,
-    args: [postUUID],
-  });
+  try {
+    const listOfComments = await turso.execute({
+      sql: `SELECT u.handle, u.avatar, u.display_name, u.uuid as user_uuid,
+        c.uuid as comment_uuid, c.content, c.created_at
+        FROM comments c
+        JOIN users u ON c.user_id = u.id
+        WHERE c.post_id = (SELECT id FROM posts WHERE uuid = ?);
+        `,
+      args: [postUUID],
+    });
 
-  if (listOfComments.rows.length != 0) {
     status = 200;
     response.message = `List of comments for post ${postUUID}`;
     response.data = [...listOfComments.rows];
+  } catch (err: any) {
+    response.message = `${err.message}`;
   }
 
-  response.success = String(status).search("2") === 0 ? true : false;
+  response.success = String(status).search("2") === 0;
   return c.json(response, status);
 }
 

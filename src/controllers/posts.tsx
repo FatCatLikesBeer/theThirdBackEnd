@@ -77,7 +77,7 @@ async function readPostDetail(c: Context) {
     const queryPost = await turso.execute({
       sql: `SELECT u.uuid AS user_uuid, u.avatar, u.display_name, u.handle,
         p.uuid AS post_uuid, p.content, p.created_at,
-        COUNT(c.post_id) AS comment_count, COUNT(l.post_id) AS like_count,
+        COUNT(DISTINCT c.post_id) AS comment_count, COUNT(DISTINCT l.post_id) AS like_count,
         COALESCE(json_group_array(
           json_object(
             'comment_uuid', c.uuid,
@@ -156,7 +156,7 @@ async function readPostList(c: Context) {
         const userPosts = await turso.execute({
           sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
             p.uuid AS post_uuid, p.content, p.created_at,
-            COUNT(c.post_id) AS comment_count, COUNT(l.post_id) as like_count
+            COUNT(DISTINCT c.post_id) AS comment_count, COUNT(DISTINCT l.post_id) as like_count
             FROM posts p
             JOIN users u ON p.user_id = u.id
             LEFT JOIN likes l ON l.post_id = p.id
@@ -183,7 +183,7 @@ async function readPostList(c: Context) {
         const userPosts = await turso.execute({
           sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
             p.uuid AS post_uuid, p.content, p.created_at,
-            COUNT(c.post_id) AS comment_count, COUNT(l.post_id) as like_count
+            COUNT(DISTINCT c.post_id) AS comment_count, COUNT(DISTINCT l.post_id) as like_count
             FROM posts p
             JOIN users u ON p.user_id = u.id
             LEFT JOIN likes l ON l.post_id = p.id
@@ -220,7 +220,7 @@ async function readPostList(c: Context) {
       const friendsPosts = await turso.execute({
         sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
           p.uuid AS post_uuid, p.content, p.created_at,
-          COUNT(c.post_id) AS comment_count, COUNT(l.post_id) AS like_count
+          COUNT(DISTINCT c.post_id) AS comment_count, COUNT(DISTINCT l.post_id) AS like_count
           FROM posts p
           JOIN friends f ON u.id = f.friend_id
           JOIN users u ON p.user_id = u.id
@@ -250,8 +250,9 @@ async function readPostList(c: Context) {
         // most recent posts
         const queryPosts = await turso.execute(`
           SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
-          p.uuid AS post_uuid, p.content, p.created_at,
-          COUNT(c.post_id) AS comment_count, COUNT(l.post_id) as like_count
+            p.uuid AS post_uuid, p.content, p.created_at,
+            COUNT(DISTINCT c.id) AS comment_count,
+            COUNT(DISTINCT l.id) as like_count
           FROM posts p
           JOIN users u ON p.user_id = u.id
           LEFT JOIN likes l ON l.post_id = p.id
@@ -269,8 +270,9 @@ async function readPostList(c: Context) {
         const querySearch = await turso.execute({
           sql: `
           SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
-          p.uuid AS post_uuid, p.content, p.created_at,
-          COUNT(c.post_id) AS comment_likes, COUNT(l.post_id) as like_count
+            p.uuid AS post_uuid, p.content, p.created_at,
+            COUNT(DISTINCT c.post_id) AS comment_likes,
+            COUNT(DISTINCT l.post_id) as like_count
           FROM posts p
           JOIN users u ON p.user_id = u.id
           LEFT JOIN likes l ON l.post_id = p.id
@@ -296,6 +298,7 @@ async function readPostList(c: Context) {
   if (response.data && listOfContentLikedByUser) {
     response.data.forEach((dataElem: any, i: number) => {
       response.data[i].post_liked = false;
+      response.data[i].comments = [];
       listOfContentLikedByUser.rows.forEach((likeElem) => {
         if (dataElem.post_uuid === likeElem.post_uuid) response.data[i].post_liked = true;
       });
