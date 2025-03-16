@@ -1,5 +1,11 @@
+import * as dotenv from 'dotenv';
 import type { FC } from "hono/jsx";
-import { turso } from "../library/dev_turso.js";
+import { turso as tursoDev } from '../library/dev_turso.js';
+import { tursoProd } from '../library/prod_turso.js';
+
+dotenv.config();
+
+const turso = String(process.env.ENVRON) === "DEV" ? tursoDev : tursoProd;
 
 function getAvatar(avatar: any): string {
   const bucketURL = "http://my-bucket.mooo.com:9000/the-third/";

@@ -4,11 +4,9 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { trimTrailingSlash } from "hono/trailing-slash";
 import { cors } from "hono/cors";
 
-import type { FC } from "hono/jsx";
-import type { Context } from "hono";
-
 import statics from "./routes/static.js";
 import api from "./routes/api.js";
+import botDropOut from "./middleweare/botDropOut.js";
 
 const app = new Hono();
 app.use(cors({
@@ -17,13 +15,13 @@ app.use(cors({
   allowHeaders: ["Authorization", "Content-Type"],
   exposeHeaders: ["Authorization"],
 }));
+
 app.use(trimTrailingSlash());
+
+app.use(botDropOut);
 
 // SPA
 app.use("*", serveStatic({ root: "./public" }));
-
-{/* const Test: FC = () => <h1>Welcome to The Third</h1>; */ }
-{/* app.get("/", (c: Context) => c.html()); */ }
 
 // API endpoints
 app.route("/api", api);
@@ -39,4 +37,6 @@ serve({
   port,
 });
 
+// TODO: Static post page
+// TODO: Static user page
 // TODO: Automate turso switching URL when going to prod

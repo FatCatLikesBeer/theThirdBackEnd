@@ -1,10 +1,16 @@
+import * as dotenv from 'dotenv';
 import { env } from "hono/adapter";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
+
+import { turso as tursoDev } from '../library/dev_turso.js';
+import { tursoProd } from '../library/prod_turso.js';
 
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-import { turso } from "../library/dev_turso.js";
+dotenv.config();
+
+const turso = String(process.env.ENVRON) === "DEV" ? tursoDev : tursoProd;
 
 async function createUser(c: Context) {
   const status: ContentfulStatusCode = 410;
@@ -34,6 +40,10 @@ async function readUserDetail(c: Context) {
         FROM users WHERE uuid = ?`,
       args: [uuid],
     });
+
+    if (queryUserInfo.rows.length === 0) {
+      throw new Error("No User Found");
+    }
 
     const queryPostLikeFriends = await turso.execute({
       sql: ` SELECT
@@ -230,7 +240,6 @@ async function deleteUser(c: Context) {
     } else {
       await transaction.commit();
       status = 200;
-      console.log(deleteUserTransaction);
       response.message = `User with email '${deleteUserTransaction.rows[0].email}' has been deleted`;
     }
   } catch (err) {

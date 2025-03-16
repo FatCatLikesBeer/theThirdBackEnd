@@ -1,5 +1,7 @@
+import * as dotenv from 'dotenv';
 import { env } from "hono/adapter";
-import { turso } from "../library/dev_turso.js";
+import { turso as tursoDev } from '../library/dev_turso.js';
+import { tursoProd } from '../library/prod_turso.js';
 import { z } from "zod";
 import { TOTP } from "totp-generator";
 import { setSignedCookie, deleteCookie } from 'hono/cookie';
@@ -12,6 +14,9 @@ import mailer from "../library/mailer.js";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { Context } from "hono";
 
+dotenv.config();
+
+const turso = String(process.env.ENVRON) === "DEV" ? tursoDev : tursoProd;
 const emailSchema = z.string().email();
 const totpSchema = z.string().length(6);
 const time = 3;

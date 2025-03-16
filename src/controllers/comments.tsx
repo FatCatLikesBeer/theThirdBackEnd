@@ -1,7 +1,12 @@
+import * as dotenv from 'dotenv';
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { turso as tursoDev } from '../library/dev_turso.js';
+import { tursoProd } from '../library/prod_turso.js';
 
-import { turso } from "../library/dev_turso.js";
+dotenv.config();
+
+const turso = String(process.env.ENVRON) === "DEV" ? tursoDev : tursoProd;
 
 async function createComment(c: Context) {
   let status: ContentfulStatusCode = 500;
@@ -62,7 +67,6 @@ async function createComment(c: Context) {
 async function readCommentDetail(c: Context) {
   let status: ContentfulStatusCode = 500;
   const commentUUID = c.req.param('commentId');
-  const postUUID = c.req.param('postId');
   const response: APIResponse = {
     success: String(status).search("2") === 0 ? true : false,
     path: `${c.req.path}`,
