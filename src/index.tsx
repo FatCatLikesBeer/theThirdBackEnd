@@ -10,7 +10,7 @@ import botDropOut from "./middleweare/botDropOut.js";
 
 const app = new Hono();
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: (origin) => origin?.startsWith("http://localhost") || origin?.startsWith("https://") ? origin : "https://app.billlaaayyy.dev",
   credentials: true,
   allowHeaders: ["Authorization", "Content-Type"],
   exposeHeaders: ["Authorization"],
@@ -19,6 +19,12 @@ app.use(cors({
 app.use(trimTrailingSlash());
 
 app.use(botDropOut);
+
+// API endpoints
+app.route("/api", api);
+
+// Static Endpoints
+app.route("/static", statics);
 
 // SPA
 app.use("*", serveStatic({
@@ -34,12 +40,6 @@ app.use("*", serveStatic({
     }
   }
 }));
-
-// API endpoints
-app.route("/api", api);
-
-// Static Endpoints
-app.route("/static", statics);
 
 const port = 3000;
 console.log(`Server is running on http://localhost:${port}`);
