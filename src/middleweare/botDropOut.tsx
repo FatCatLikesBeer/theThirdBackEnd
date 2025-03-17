@@ -55,7 +55,7 @@ const BotResponse: FC<{ path: string, url: string }> = async (props: { path: str
         contentType: "post",
         handle: j.data?.handle,
         url: props.url,
-        image: `${bucketURL}/${j.data?.avatar}`,
+        image: avatarFormatter(j.data?.avatar),
         content: j.data?.content,
         createdAt: j.data?.created_at,
       } as PostContent
@@ -117,6 +117,10 @@ const BoilerPlate: FC<{
     );
   }
 
+function avatarFormatter(avatar: string | null | undefined): string {
+  const url = avatar ? `${bucketURL}/${avatar}.jpg` : `${bucketURL}/avatar.jpg`;
+  return url;
+}
 
 interface BaseContent {
   handle: string;
