@@ -72,6 +72,7 @@ async function createPost(c: Context) {
   */
 async function readPostDetail(c: Context) {
   let status: ContentfulStatusCode = 400;
+  const userUUID = await retrieveUUID(c);
   const uuid = c.req.param("id");
   const response: APIResponse = {
     success: false,
@@ -111,12 +112,25 @@ async function readPostDetail(c: Context) {
       args: [uuid],
     });
 
+    // Check if user has liked said post
+    const queryPostLiked = userUUID ? await turso.execute({
+      sql: `SELECT * FROM likes WHERE post_id =
+        (SELECT id FROM posts WHERE uuid = ?)
+        AND user_id = (SELECT id FROM users WHERE uuid = ?)
+      ;`,
+      args: [uuid, userUUID],
+    })
+      :
+      null;
+
     if (queryPost.rows.length != 0) {
       status = 200;
       response.success = true;
       response.message = `Post for uuid: ${uuid}`;
       response.data = { ...queryPost.rows[0] }
       response.data.comments = JSON.parse(response.data.comments);
+      if (queryPostLiked) { response.data.post_liked = queryPostLiked?.rows.length > 0 ? true : false }
+
     } else {
       throw new Error("Post may not exist");
     }
