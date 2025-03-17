@@ -3,13 +3,20 @@ import { createClient } from "@libsql/client";
 
 dotenv.config();
 
-export const tursoProd = createClient({
-  url: String(process.env.TURSO_DATABASE_URL),
-  authToken: String(process.env.TURSO_AUTH_TOKEN),
-});
+const environment = process.env.ENVRON;
+
+export const turso = environment === "DEV" ?
+  createClient({
+    url: 'http://127.0.0.1:8082',
+  })
+  :
+  createClient({
+    url: String(process.env.TURSO_DATABASE_URL),
+    authToken: String(process.env.TURSO_AUTH_TOKEN),
+  });
 
 // Create DB tables
-const transaction = await tursoProd.transaction();
+const transaction = await turso.transaction();
 try {
   await transaction.execute(`
     CREATE TABLE IF NOT EXISTS users (
@@ -81,8 +88,8 @@ try {
 }
 
 // Create first users, me :)
-const reader = await tursoProd.transaction();
-const transactionOne = await tursoProd.transaction();
+const reader = await turso.transaction();
+const transactionOne = await turso.transaction();
 try {
   colorizeGreen("Before");
   const userFound = await reader.execute("SELECT id FROM users WHERE email = 'itisbilly@gmail.com'; ");

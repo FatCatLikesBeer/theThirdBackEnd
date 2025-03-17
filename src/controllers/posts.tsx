@@ -1,14 +1,11 @@
 import * as dotenv from 'dotenv';
-import { turso as tursoDev } from '../library/dev_turso.js';
-import { tursoProd } from '../library/prod_turso.js';
+import { turso } from '../library/prod_turso.js';
 import { retrieveUUID } from "../middleweare/authChecker.js";
 
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 dotenv.config();
-
-const turso = String(process.env.ENVRON) === "DEV" ? tursoDev : tursoProd;
 
 async function createPost(c: Context) {
   const uuid = c.get("uuid");

@@ -3,15 +3,13 @@ import { getSignedCookie, setSignedCookie, deleteCookie } from 'hono/cookie';
 import { sign, verify } from 'hono/jwt';
 import type { Context, Next } from 'hono';
 
-import { turso as tursoDev } from '../library/dev_turso.js';
-import { tursoProd } from '../library/prod_turso.js';
+import { turso } from '../library/prod_turso.js';
 import { createPayload } from '../library/createPayload.js';
 
 dotenv.config();
 
 const jwtSecret = String(process.env.JWT_SECRET);
 const cookieSecret = String(process.env.COOKIE_SECRET);
-const turso = String(process.env.ENVRON) === "DEV" ? tursoDev : tursoProd;
 
 /**
  * authChecker middleware
