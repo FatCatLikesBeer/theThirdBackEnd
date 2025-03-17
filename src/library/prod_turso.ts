@@ -31,6 +31,7 @@ try {
       bio TEXT DEFAULT NULL,
       about TEXT DEFAULT NULL,
       display_name TEXT
+      twitter TEXT, instagram TEXT, blue_sky TEXT, url_1 TEXT, url_2 TEXT
     );
   `);
 
@@ -68,6 +69,8 @@ try {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
       FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
+      UNIQUE (user_id, post_id)
+      UNIQUE (user_id, comment_id)
     );
   `);
 
@@ -78,7 +81,8 @@ try {
       friend_id INTEGER NOT NULL CHECK (friend_id <> ''),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (friend_id) REFERENCES users(id) ON DELETE CASCADE
+      FOREIGN KEY (friend_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(user_id, friend_id) -- 🚀 This prevents duplicates!
     );
   `);
 
