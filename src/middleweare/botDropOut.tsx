@@ -1,7 +1,7 @@
 import type { FC } from "hono/jsx";
 import type { Context, Next } from "hono";
 
-const bucketURL = "https://pub-3b9f03571cb044d2b9abb41b6e9ba815.r2.dev";
+const bucketURL = "https://cdn.billlaaayyy.dev";
 
 export default async function botDropOut(c: Context, next: Next) {
   const userAgent = c.req.header("User-Agent");
@@ -29,7 +29,7 @@ const BotResponse: FC<{ path: string, url: string }> = async (props: { path: str
 
   if (requestType === "users") {
     try {
-      const r = await fetch(`http://localhost:3000/api/users/${uuid}`);
+      const r = await fetch(`/api/users/${uuid}`);
       const j: APIResponse<UserShape> = await r.json();
       if (!r.ok) { throw new Error("API Error") }
       if (!r.ok) { throw new Error("Query Error") }
@@ -47,7 +47,7 @@ const BotResponse: FC<{ path: string, url: string }> = async (props: { path: str
     }
   } else if (requestType === "posts") {
     try {
-      const r = await fetch(`http://localhost:3000/api/posts/${uuid}`);
+      const r = await fetch(`/api/posts/${uuid}`);
       const j: APIResponse<PostShape> = await r.json();
       if (!r.ok) { throw new Error("API Error") }
       if (!r.ok) { throw new Error("Query Error") }
@@ -109,8 +109,8 @@ const BoilerPlate: FC<{
           </>
           :
           <>
-            <meta name="twitter:image" content="http://localhost:3000/placeholder.jpg" />
-            <meta property="og:image" content="http://localhost:3000/placeholder.jpg" />
+            <meta name="twitter:image" content="https://cdn.billlaaayyy.dev/placeholder.jpg" />
+            <meta property="og:image" content="https://cdn.billlaaayyy.dev/placeholder.jpg" />
           </>
         }
       </>
