@@ -85,6 +85,7 @@ const loginOrSignup = async (c: Context) => {
           // Status is good
           status = 200;
         } catch (err) {
+          console.error(err);
           status = 500;
           response.message = `DB Error [GetAuth17392]: ${err}`;
         } finally {
@@ -146,6 +147,7 @@ const loginOrSignup = async (c: Context) => {
       }
     }
   } catch (err) {
+    console.error(err);
     response.message = String(err);
   }
 
@@ -169,19 +171,18 @@ const signUpRegistration = async (c: Context) => {
     path: `${c.req.path}`,
     message: "Unexpected Error: [PostSignUp00001]",
   }
+  const emailInUse = await turso.execute({
+    sql: "SELECT email FROM users WHERE email = ?;",
+    args: [email],
+  });
 
   const emailValidationAttempt = emailSchema.safeParse(email);
-  const emailInUseTransaction = await turso.transaction();
   const createUnverifiedUserTransaction = await turso.transaction();
   try {
     // Check if email is valid
     if (!emailValidationAttempt.success) { throw new Error("Email invalid: [PostSignUp00001]") }
 
     // Check if email is in use
-    const emailInUse = await emailInUseTransaction.execute({
-      sql: "SELECT email FROM users WHERE email = ?;",
-      args: [email],
-    });
     if (emailInUse.rows.length != 0) { throw new Error("Email invalid: [PostSignUp00002]") }
 
     // Add email to unverified_users table
@@ -200,9 +201,9 @@ const signUpRegistration = async (c: Context) => {
     response.message = "Check email for verification token";
     status = 200;
   } catch (err) {
+    console.error(err);
     response.message = `${err}`;
   } finally {
-    emailInUseTransaction.close();
     createUnverifiedUserTransaction.close();
   }
 
@@ -228,6 +229,16 @@ const signUpConfirmation = async (c: Context) => {
     message: `Unexpected Error: ${errorSignature(1)}`,
   }
 
+  const emailCollision = await turso.execute({
+    sql: "SELECT email FROM users WHERE email = ?;",
+    args: [email],
+  });
+
+  const totpTableQuery = await turso.execute({
+    sql: "SELECT valid_until FROM unverified_users WHERE email = ? AND otp = ? ORDER BY valid_until DESC LIMIT 1;",
+    args: [email, String(totpValue)],
+  });
+
   const emailValidationAttempt = emailSchema.safeParse(email);
   const totpValidationAttempt = totpSchema.safeParse(totpValue);
   const userRegistrationTransaction = await turso.transaction();
@@ -240,17 +251,9 @@ const signUpConfirmation = async (c: Context) => {
     if (!totpValidationAttempt.success) { throw new Error(`Invalid token: ${errorSignature(3)}`) }
 
     // Email is not already in use
-    const emailCollision = await turso.execute({
-      sql: "SELECT email FROM users WHERE email = ?;",
-      args: [email],
-    });
     if (emailCollision.rows.length != 0) { throw new Error(`Email invalid: ${errorSignature(4)}`) }
 
     // Email and totp are on a single database row
-    const totpTableQuery = await turso.execute({
-      sql: "SELECT valid_until FROM unverified_users WHERE email = ? AND otp = ? ORDER BY valid_until DESC LIMIT 1;",
-      args: [email, String(totpValue)],
-    });
     if (totpTableQuery.rows.length === 0) { throw new Error(`Email or Token invalid: ${errorSignature(5)}`) }
 
     // Totp is not expired
@@ -275,6 +278,7 @@ const signUpConfirmation = async (c: Context) => {
     response.message = "SignUp Successful! Welcome 🙂";
     await userRegistrationTransaction.commit();
   } catch (err) {
+    console.error(err);
     response.message = String(err);
   } finally {
     userRegistrationTransaction.close();
@@ -301,6 +305,7 @@ const logout = async (c: Context) => {
     response.message = "Logged out";
     status = 200;
   } catch (err) {
+    console.error(err);
     response.message = "Could not logout [GetLogout00002]";
   }
 
@@ -357,6 +362,7 @@ const getSignedBucketURL = async (c: Context) => {
     response.data = preSignedURL;
     await updateDB.commit();
   } catch (err) {
+    console.error(err);
     response.message = "Contractor Error: [GetToken00002]";
   } finally {
     updateDB.close();

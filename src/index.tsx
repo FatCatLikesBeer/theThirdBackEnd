@@ -21,7 +21,19 @@ app.use(trimTrailingSlash());
 app.use(botDropOut);
 
 // SPA
-app.use("*", serveStatic({ root: "./public" }));
+app.use("*", serveStatic({
+  root: "./public",
+  rewriteRequestPath: (path) => {
+    let resultPath = path;
+    if (path.startsWith("/api")) {
+      return resultPath;
+    } else if (path.startsWith("/assets")) {
+      return resultPath;
+    } else {
+      return "/index.html";
+    }
+  }
+}));
 
 // API endpoints
 app.route("/api", api);
@@ -36,7 +48,3 @@ serve({
   fetch: app.fetch,
   port,
 });
-
-// TODO: Static post page
-// TODO: Static user page
-// TODO: Automate turso switching URL when going to prod
