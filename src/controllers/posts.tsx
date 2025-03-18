@@ -75,37 +75,25 @@ async function readPostDetail(c: Context) {
     success: false,
     path: `${c.req.path}`,
     message: "Bad request",
-  }
+  };
 
   try {
     const queryPost = await turso.execute({
-      sql: `SELECT u.uuid AS user_uuid, u.avatar, u.display_name, u.handle,
-        p.uuid AS post_uuid, p.content, p.created_at,
-        COUNT(DISTINCT c.post_id) AS comment_count, COUNT(DISTINCT l.post_id) AS like_count,
-        COALESCE(json_group_array(
-          json_object(
-            'comment_uuid', c.uuid,
-            'content', c.content,
-            'created_at', c.created_at,
-            'user_uuid', u2.uuid,
-            'handle', u2.handle,
-            'avatar', u2.avatar,
-            'likes', l2.like_count
-          )
-        ), '[]') AS comments
+      sql: `SELECT u.uuid as user_uuid, u.avatar, u.handle, p.created_at,
+          p.content, p.uuid as post_uuid
         FROM posts p
         LEFT JOIN users u ON u.id = p.user_id
-        LEFT JOIN comments c ON c.post_id = p.id
-        LEFT JOIN likes l ON l.post_id = p.id
-        LEFT JOIN users u2 ON c.user_id = u2.id
-        LEFT JOIN (
-          SELECT id, COUNT(*) AS like_count, comment_id
-          FROM likes
-          GROUP BY id
-        ) l2 ON l2.comment_id = c.id
         WHERE p.uuid = ?
-        GROUP BY p.id;
-      `,
+      ;`,
+      args: [uuid],
+    });
+
+    const queryComments = await turso.execute({
+      sql: `SELECT c.content, c.created_at, c.uuid AS comment_uuid,
+          u.uuid AS user_uuid, u.avatar, u.handle
+        FROM comments c
+        LEFT JOIN users u ON u.id = c.user_id
+        WHERE c.post_id = (SELECT id FROM posts WHERE uuid = ?); `,
       args: [uuid],
     });
 
@@ -120,12 +108,21 @@ async function readPostDetail(c: Context) {
       :
       null;
 
+    const postLikeCount = await turso.execute({
+      sql: `SELECT COUNT(*) as like_count FROM likes
+        WHERE post_id = (SELECT id FROm posts WHERE uuid = ?)
+      ;`,
+      args: [uuid],
+    });
+
     if (queryPost.rows.length != 0) {
       status = 200;
       response.success = true;
       response.message = `Post for uuid: ${uuid}`;
       response.data = { ...queryPost.rows[0] }
-      response.data.comments = JSON.parse(response.data.comments);
+      response.data.comments = [...queryComments.rows];
+      response.data.comment_count = queryComments.rows.length;
+      response.data.like_count = postLikeCount.rows[0].like_count;
       if (queryPostLiked) { response.data.post_liked = queryPostLiked?.rows.length > 0 ? true : false }
 
     } else {
@@ -173,7 +170,7 @@ async function readPostList(c: Context) {
         const userPosts = await turso.execute({
           sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
             p.uuid AS post_uuid, p.content, p.created_at,
-            COUNT(DISTINCT c.post_id) AS comment_count, COUNT(DISTINCT l.post_id) as like_count
+            COUNT(DISTINCT c.id) AS comment_count, COUNT(DISTINCT l.id) as like_count
             FROM posts p
             JOIN users u ON p.user_id = u.id
             LEFT JOIN likes l ON l.post_id = p.id

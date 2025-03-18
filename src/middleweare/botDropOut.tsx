@@ -1,5 +1,6 @@
 import type { FC } from "hono/jsx";
 import type { Context, Next } from "hono";
+import { turso } from "../library/prod_turso.js";
 
 const bucketURL = "https://cdn.billlaaayyy.dev";
 
@@ -29,15 +30,17 @@ const BotResponse: FC<{ path: string, url: string }> = async (props: { path: str
 
   if (requestType === "users") {
     try {
-      const r = await fetch(`/api/users/${uuid}`);
-      const j: APIResponse<UserShape> = await r.json();
-      if (!r.ok) { throw new Error("API Error") }
-      if (!r.ok) { throw new Error("Query Error") }
+      // Add content to user content object
+      const result = await turso.execute({
+        sql: `SELECT avatar, handle FROM users WHERE uuid = ?;`,
+        args: [uuid],
+      });
+      if (result.rows.length < 1) { throw new Error("User not found") }
       content = {
         contentType: "user",
-        handle: j.data?.handle,
-        url: props.url,
-        image: `${bucketURL}/${j.data?.avatar}`,
+        handle: result.rows[0].handle,
+        image: avatarFormatter(result.rows[0].avatar as string | null),
+        url: `${props.url}`
       } as UserContent
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -47,17 +50,23 @@ const BotResponse: FC<{ path: string, url: string }> = async (props: { path: str
     }
   } else if (requestType === "posts") {
     try {
-      const r = await fetch(`/api/posts/${uuid}`);
-      const j: APIResponse<PostShape> = await r.json();
-      if (!r.ok) { throw new Error("API Error") }
-      if (!r.ok) { throw new Error("Query Error") }
+      // Add post content to content object
+      const result = await turso.execute({
+        sql: `SELECT u.handle, u.avatar, p.created_at, p.content
+          FROM posts p
+          LEFT JOIN users u ON u.id = p.user_id
+          WHERE p.uuid = ?
+        ;`,
+        args: [uuid],
+      });
+      if (result.rows.length < 1) { throw new Error("User not found") }
       content = {
         contentType: "post",
-        handle: j.data?.handle,
-        url: props.url,
-        image: avatarFormatter(j.data?.avatar),
-        content: j.data?.content,
-        createdAt: j.data?.created_at,
+        handle: result.rows[0].handle,
+        image: avatarFormatter(result.rows[0].avatar as string | null),
+        url: `${props.url}`,
+        content: result.rows[0].content,
+        createdAt: result.rows[0].created_at,
       } as PostContent
     } catch (err: unknown) {
       if (err instanceof Error) {

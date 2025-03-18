@@ -10,7 +10,11 @@ import botDropOut from "./middleweare/botDropOut.js";
 
 const app = new Hono();
 app.use(cors({
-  origin: (origin) => origin?.startsWith("http://localhost") || origin?.startsWith("https://") ? origin : "https://app.billlaaayyy.dev",
+  origin: ["https://app.billlaaayyy.dev",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost"
+  ],
   credentials: true,
   allowHeaders: ["Authorization", "Content-Type"],
   exposeHeaders: ["Authorization"],
