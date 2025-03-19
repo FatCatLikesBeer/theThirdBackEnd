@@ -178,7 +178,7 @@ async function readPostList(c: Context) {
             WHERE u.uuid = ?
             GROUP BY p.id
             ORDER BY p.created_at DESC
-            LIMIT 20;
+            LIMIT 60;
             `,
           args: [userQuery],
         });
@@ -207,7 +207,7 @@ async function readPostList(c: Context) {
             )
             GROUP BY p.id
             ORDER BY p.created_at DESC
-            LIMIT 20;
+            LIMIT 60;
             `,
           args: [`%${userQuery}%`],
         });
@@ -243,7 +243,7 @@ async function readPostList(c: Context) {
           WHERE f.user_id = (SELECT id FROM users WHERE uuid = ?)
           GROUP BY p.id
           ORDER BY p.created_at DESC
-          LIMIT 20;
+          LIMIT 60;
         `,
         args: [userUUID],
       });
@@ -273,7 +273,7 @@ async function readPostList(c: Context) {
           LEFT JOIN comments c ON c.post_id = p.id
           GROUP BY p.id
           ORDER BY p.created_at DESC
-          LIMIT 20;
+          LIMIT 60;
           `);
 
         response.message = `${queryPosts.rows.length} of the most recent post${queryPosts.rows.length === 1 ? "" : "s"}`;
@@ -294,7 +294,7 @@ async function readPostList(c: Context) {
           WHERE p.content LIKE ?
           GROUP BY p.id
           ORDER BY p.created_at DESC
-          LIMIT 20;
+          LIMIT 60;
           `,
           args: [`%${searchQuery}%`],
         });

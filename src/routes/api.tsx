@@ -8,6 +8,7 @@ import comments from "./comments.jsx";
 import friends from "./friends.jsx";
 import likes from "./likes.jsx";
 import auth from "./auth.jsx";
+import guest from "./guest.jsx";
 import { Docs } from "../static/docs.jsx";
 
 const api = new Hono();
@@ -20,5 +21,6 @@ api.route("/posts/:postId/likes", likes);
 api.route("/posts/:postId/comments/:commentId/likes", likes);
 api.route("/friends", friends);
 api.route("/auth", auth);
+api.route("/guest", guest);
 
 export default api;
