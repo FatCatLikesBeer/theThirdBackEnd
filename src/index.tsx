@@ -7,8 +7,12 @@ import { cors } from "hono/cors";
 import statics from "./routes/static.js";
 import api from "./routes/api.js";
 import botDropOut from "./middleweare/botDropOut.js";
+import conInfo from "./middleweare/conInfo.js";
 
 const app = new Hono();
+
+app.use(conInfo);
+
 app.use(cors({
   origin: ["https://app.billlaaayyy.dev",
     "http://localhost:5173",

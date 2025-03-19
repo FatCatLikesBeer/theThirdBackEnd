@@ -86,6 +86,17 @@ try {
     );
   `);
 
+  await transaction.execute(`
+    CREATE TABLE IF NOT EXISTS visitors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      ip TEXT,
+      route TEXT,
+      method TEXT,
+      user_agent TEXT
+    );
+  `);
+
   await transaction.commit();
 } finally {
   transaction.close();
