@@ -1,6 +1,10 @@
 import * as dotenv from 'dotenv';
+import { env } from "hono/adapter";
 import { turso } from '../library/prod_turso.js';
 import { retrieveUUID } from "../middleweare/authChecker.js";
+import { randomBytes } from 'crypto';
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
@@ -16,23 +20,37 @@ async function createPost(c: Context) {
     message: 'Can not create post',
   }
 
-  const postContent = c.req.queries('post');
+  const postContent = c.req.query("post");
+  const contentType = c.req.query("contentType");
+  const postUUID = c.req.query("postUUID");
 
   const postTransaction = await turso.transaction();
-  const readTransaction = await turso.transaction();
   try {
-    await postTransaction.execute({
-      sql: `INSERT INTO posts (user_id, content)
-        SELECT id, ?
-        FROM users WHERE uuid = ?;
-      ;`,
-      args: [postContent, uuid],
-    });
-    await postTransaction.commit();
+    if (undefined === postUUID) {
+      const contentType = "text";
+      await postTransaction.execute({
+        sql: `INSERT INTO posts (user_id, content, content_type)
+          SELECT id, ?, ?
+          FROM users WHERE uuid = ?;
+        ;`,
+        args: [postContent, contentType, uuid],
+      });
+      await postTransaction.commit();
+    } else if (contentType === "image") {
+      console.log("Creating a post of content_type: image");
+      await postTransaction.execute({
+        sql: `INSERT INTO posts (user_id, content, content_type, uuid)
+          SELECT id, ?, ?, ?
+          FROM users WHERE uuid = ?;
+        ;`,
+        args: [postContent, contentType, postUUID, uuid],
+      });
+      await postTransaction.commit();
+    }
 
-    const readAttempt = await readTransaction.execute({
+    const readAttempt = await turso.execute({
       sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar,
-        p.uuid as post_uuid, p.content, p.created_at
+        p.uuid as post_uuid, p.content, p.content_type, p.created_at
       FROM users u
       JOIN posts p ON p.user_id = u.id
       WHERE u.uuid = ?
@@ -41,7 +59,6 @@ async function createPost(c: Context) {
       ;`,
       args: [uuid],
     });
-    await readTransaction.commit();
 
     status = 200;
     response.success = true;
@@ -56,7 +73,6 @@ async function createPost(c: Context) {
     response.message = `${err}`;
   } finally {
     postTransaction.close();
-    readTransaction.close();
   }
 
   return c.json(response, status);
@@ -80,7 +96,7 @@ async function readPostDetail(c: Context) {
   try {
     const queryPost = await turso.execute({
       sql: `SELECT u.uuid as user_uuid, u.avatar, u.handle, p.created_at,
-          p.content, p.uuid as post_uuid
+          p.content, p.content_type, p.uuid as post_uuid
         FROM posts p
         LEFT JOIN users u ON u.id = p.user_id
         WHERE p.uuid = ?
@@ -110,7 +126,7 @@ async function readPostDetail(c: Context) {
 
     const postLikeCount = await turso.execute({
       sql: `SELECT COUNT(*) as like_count FROM likes
-        WHERE post_id = (SELECT id FROm posts WHERE uuid = ?)
+        WHERE post_id = (SELECT id FROM posts WHERE uuid = ?)
       ;`,
       args: [uuid],
     });
@@ -169,7 +185,7 @@ async function readPostList(c: Context) {
       try {
         const userPosts = await turso.execute({
           sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
-            p.uuid AS post_uuid, p.content, p.created_at,
+            p.uuid AS post_uuid, p.content, p.content_type, p.created_at,
             COUNT(DISTINCT c.id) AS comment_count, COUNT(DISTINCT l.id) as like_count
             FROM posts p
             JOIN users u ON p.user_id = u.id
@@ -196,7 +212,7 @@ async function readPostList(c: Context) {
       try {
         const userPosts = await turso.execute({
           sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
-            p.uuid AS post_uuid, p.content, p.created_at,
+            p.uuid AS post_uuid, p.content, p.content_type, p.created_at,
             COUNT(DISTINCT c.post_id) AS comment_count, COUNT(DISTINCT l.post_id) as like_count
             FROM posts p
             JOIN users u ON p.user_id = u.id
@@ -233,7 +249,7 @@ async function readPostList(c: Context) {
     try {
       const friendsPosts = await turso.execute({
         sql: `SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
-          p.uuid AS post_uuid, p.content, p.created_at,
+          p.uuid AS post_uuid, p.content, p.content_type, p.created_at,
           COUNT(DISTINCT c.post_id) AS comment_count, COUNT(DISTINCT l.post_id) AS like_count
           FROM posts p
           JOIN friends f ON u.id = f.friend_id
@@ -264,7 +280,7 @@ async function readPostList(c: Context) {
         // most recent posts
         const queryPosts = await turso.execute(`
           SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
-            p.uuid AS post_uuid, p.content, p.created_at,
+            p.uuid AS post_uuid, p.content, p.content_type, p.created_at,
             COUNT(DISTINCT c.id) AS comment_count,
             COUNT(DISTINCT l.id) as like_count
           FROM posts p
@@ -284,14 +300,14 @@ async function readPostList(c: Context) {
         const querySearch = await turso.execute({
           sql: `
           SELECT u.uuid AS user_uuid, u.handle, u.avatar, u.display_name,
-            p.uuid AS post_uuid, p.content, p.created_at,
+            p.uuid AS post_uuid, p.content, p.content_type, p.created_at,
             COUNT(DISTINCT c.post_id) AS comment_likes,
             COUNT(DISTINCT l.post_id) as like_count
           FROM posts p
           JOIN users u ON p.user_id = u.id
           LEFT JOIN likes l ON l.post_id = p.id
           LEFT JOIN comments c ON c.post_id = c.id
-          WHERE p.content LIKE ?
+          WHERE p.content, p.content_type LIKE ?
           GROUP BY p.id
           ORDER BY p.created_at DESC
           LIMIT 60;
@@ -355,9 +371,6 @@ async function deletePost(c: Context) {
       args: [postId]
     });
     // cant read userID if it doesn't exist
-    console.log("request uuid", uuidUser);
-    console.log("request post", postId);
-    console.log("first sql query", verifyRequest);
     if (postId != verifyRequest.rows[0]?.postID) {
       status = 404;
       throw new Error("Post can not be found");
@@ -388,8 +401,52 @@ async function deletePost(c: Context) {
   return c.json(response, status);
 }
 
+async function getPresignedURL(c: Context) {
+  let status: ContentfulStatusCode = 500;
+  const response: APIResponse = {
+    success: String(status).search("2") === 0,
+    path: `${c.req.path}`,
+    message: "Unexpected Error: [GetToken10001]",
+  }
+
+  const { R2_API_ENDPOINT } = env<{ R2_API_ENDPOINT: string }>(c);
+  const { R2_ACCESS_KEY } = env<{ R2_ACCESS_KEY: string }>(c);
+  const { R2_SECRET_KEY } = env<{ R2_SECRET_KEY: string }>(c);
+  const postUUID = randomBytes(16).toString("hex");
+
+  try {
+    const S3 = new S3Client({
+      region: "auto",
+      endpoint: R2_API_ENDPOINT,
+      credentials: {
+        accessKeyId: R2_ACCESS_KEY,
+        secretAccessKey: R2_SECRET_KEY,
+      }
+    });
+
+    const preSignedURL = await getSignedUrl(
+      S3,
+      new PutObjectCommand({ Bucket: "third-app-bucket", Key: `image${postUUID}.jpg` }),
+      { expiresIn: 3600 },
+    );
+
+    status = 200;
+    response.message = "Here's your presigned URL";
+    response.data = {
+      url: preSignedURL,
+      postUUID: postUUID,
+    };
+  } catch (err) {
+    console.error(err);
+    response.message = "Contractor Error: [GetToken10002]";
+  }
+
+  response.success = String(status).search("2") === 0;
+  return c.json(response, status);
+}
+
 const postControllers = {
-  createPost, readPostList, readPostDetail, updatePost, deletePost,
+  createPost, readPostList, readPostDetail, updatePost, deletePost, getPresignedURL,
 }
 
 export default postControllers;

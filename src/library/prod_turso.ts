@@ -42,6 +42,7 @@ try {
       user_id INTEGER NOT NULL CHECK(user_id <> ''),
       content TEXT NOT NULL CHECK(content <> ''),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      content_type TEXT,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
