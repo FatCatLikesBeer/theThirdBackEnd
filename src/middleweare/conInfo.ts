@@ -4,11 +4,11 @@ import type { Context, Next } from "hono";
 import { turso } from "../library/prod_turso.js";
 
 export default async function conInfo(c: Context, next: Next) {
-  const ip = String(getConnInfo(c).remote.address);
-  const [route, user_agent, method] = [
+  const [route, user_agent, method, ip] = [
     String(c.req.url),
     String(c.req.header("User-Agent")),
     String(c.req.method),
+    String(c.req.header("fly-client-ip") || getConnInfo(c).remote.address),
   ];
 
   const transaction = await turso.transaction("write");
